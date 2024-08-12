@@ -15,38 +15,30 @@ async function getFreeTime(req, res) {
 
 async function createFreeTime(req, res) {
   try {
-    const { startDate, endDate, startTime, endTime } = req.body;
+    const { freeDate, startTime, endTime } = req.body;
     const userId = req.user.userId;
 
-    const newStartDate = new Date(startDate);
-    const newEndDate = new Date(endDate);
+    const newStartDate = new Date(`${freeDate}T${startTime}:00.000Z`);
+    const newEndDate = new Date(`${freeDate}T${endTime}:00.000Z`);
 
     const existingFreeTimes = await FreeTime.find({
       userId,
       $or: [
         {
           $and: [
-            { startDate: { $lte: newEndDate } },
-            { endDate: { $gte: newStartDate } },
+            { freeDate: freeDate },
+            { startTime: { $lte: endTime } },
+            { endTime: { $gte: startTime } },
           ],
-        },
-        {
-          $and: [{ startDate: newStartDate }, { endDate: newEndDate }],
         },
       ],
     });
 
-    const isTimeOverlap = (
-      newStartTime,
-      newEndTime,
-      existingStartTime,
-      existingEndTime
-    ) => {
-      return newStartTime < existingEndTime && newEndTime > existingStartTime;
-    };
-
     for (const time of existingFreeTimes) {
-      if (isTimeOverlap(startTime, endTime, time.startTime, time.endTime)) {
+      if (
+        newStartDate < new Date(`${time.freeDate}T${time.endTime}:00.000Z`) &&
+        newEndDate > new Date(`${time.freeDate}T${time.startTime}:00.000Z`)
+      ) {
         return res
           .status(400)
           .json({ message: "Thời gian rảnh trùng lặp với lịch đã có." });
@@ -55,8 +47,7 @@ async function createFreeTime(req, res) {
 
     const newFreeTime = new FreeTime({
       userId,
-      startDate: newStartDate,
-      endDate: newEndDate,
+      freeDate,
       startTime,
       endTime,
     });
@@ -70,14 +61,15 @@ async function createFreeTime(req, res) {
       .json({ error: "An error occurred while creating free time" });
   }
 }
+
 async function updateFreeTime(req, res) {
   try {
     const { freetimeId } = req.params;
-    const { startDate, endDate, startTime, endTime } = req.body;
+    const { freeDate, startTime, endTime } = req.body;
     const userId = req.user.userId;
 
-    const newStartDate = new Date(startDate);
-    const newEndDate = new Date(endDate);
+    const newStartDate = new Date(`${freeDate}T${startTime}:00.000Z`);
+    const newEndDate = new Date(`${freeDate}T${endTime}:00.000Z`);
 
     const existingFreeTimes = await FreeTime.find({
       userId,
@@ -89,23 +81,11 @@ async function updateFreeTime(req, res) {
             { endDate: { $gte: newStartDate } },
           ],
         },
-        {
-          $and: [{ startDate: newStartDate }, { endDate: newEndDate }],
-        },
       ],
     });
 
-    const isTimeOverlap = (
-      newStartTime,
-      newEndTime,
-      existingStartTime,
-      existingEndTime
-    ) => {
-      return newStartTime < existingEndTime && newEndTime > existingStartTime;
-    };
-
     for (const time of existingFreeTimes) {
-      if (isTimeOverlap(startTime, endTime, time.startTime, time.endTime)) {
+      if (newStartDate < time.endDate && newEndDate > time.startDate) {
         return res
           .status(400)
           .json({ message: "Thời gian rảnh trùng lặp với lịch đã có." });
@@ -130,6 +110,7 @@ async function updateFreeTime(req, res) {
       .json({ error: "An error occurred while updating free time" });
   }
 }
+
 async function deleteFreeTime(req, res) {
   try {
     const { freetimeId } = req.params;

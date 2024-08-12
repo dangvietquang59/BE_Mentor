@@ -1,5 +1,3 @@
-// models/FreeTime.js
-
 const mongoose = require("mongoose");
 
 const freeTimeSchema = new mongoose.Schema(
@@ -9,8 +7,7 @@ const freeTimeSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    freeDate: { type: Date, required: true },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
   },

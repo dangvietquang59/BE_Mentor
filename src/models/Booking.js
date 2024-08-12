@@ -2,11 +2,6 @@ const mongoose = require("mongoose");
 
 const bookingSchema = new mongoose.Schema(
   {
-    mentorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      require: true,
-    },
     menteeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
