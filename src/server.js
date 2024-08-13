@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(
   cors({
-    origin: "http://localhost:8080",
+    origin: "https://mentor-steel.vercel.app/",
     methods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
