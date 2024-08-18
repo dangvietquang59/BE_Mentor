@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const RefreshToken = require("../models/refreshtoken");
+const gravatar = require("gravatar");
 
 async function login(req, res) {
   const { email, password } = req.body;
@@ -55,7 +56,7 @@ async function login(req, res) {
 }
 
 async function register(req, res) {
-  const { email, password, role } = req.body;
+  const { fullName, email, password, role } = req.body;
 
   try {
     const existingUser = await User.findOne({ email });
@@ -65,10 +66,19 @@ async function register(req, res) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = new User({ email, password: hashedPassword, role });
+    const avatarUrl = gravatar.url(email, { s: "200", r: "pg", d: "mm" });
+
+    const newUser = new User({
+      email,
+      password: hashedPassword,
+      role,
+      fullName,
+      imageUrl: `https:${avatarUrl}`,
+    });
+
     await newUser.save();
 
-    res.json({ message: "Đăng ký thành công." });
+    res.json({ message: "Đăng ký thành công.", avatarUrl });
   } catch (error) {
     console.error("Error during registration:", error);
     res.status(500).json({
