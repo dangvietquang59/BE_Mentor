@@ -16,6 +16,8 @@ app.use(
   cors({
     origin: ["https://mentor-steel.vercel.app", "http://localhost:8080"],
     methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 
