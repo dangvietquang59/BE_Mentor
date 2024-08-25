@@ -5,6 +5,7 @@ const userRoutes = require("./routes/users");
 const postRoutes = require("./routes/posts");
 const freetimeRoutes = require("./routes/freetime");
 const bookingRoutes = require("./routes/booking");
+const uploadRoutes = require("./routes/upload");
 const app = express();
 const cors = require("cors");
 db();
@@ -23,6 +24,7 @@ app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
 app.use("/freetime", freetimeRoutes);
 app.use("/booking", bookingRoutes);
+app.use("/v2", uploadRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
