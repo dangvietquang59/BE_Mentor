@@ -14,4 +14,9 @@ router.put(
   authMiddleware.authenticateToken,
   userController.updateProfile
 );
+router.put(
+  "/update-profile-image/:userId",
+  authMiddleware.authenticateToken,
+  userController.updateProfileImageUrl
+);
 module.exports = router;

@@ -36,12 +36,12 @@ async function getProfile(req, res) {
 async function updateProfile(req, res) {
   try {
     const { userId } = req.params;
-    const { fullName, role, bio, imageUrl, experience } = req.body;
+    const { fullName, role, bio, experience } = req.body;
     const slug = slugify(fullName, { lower: true });
 
     const updatedProfile = await User.findOneAndUpdate(
       { _id: userId },
-      { fullName, role, bio, imageUrl, experience, slug },
+      { fullName, role, bio, experience, slug },
       { new: true }
     );
 
@@ -57,5 +57,37 @@ async function updateProfile(req, res) {
       .json({ error: "An error occurred while updating the profile" });
   }
 }
+async function updateProfileImageUrl(req, res) {
+  try {
+    const { userId } = req.params;
+    const { imageUrl } = req.body;
 
-module.exports = { getAllUsers, getProfile, updateProfile };
+    if (!userId || !imageUrl) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const updatedProfile = await User.findOneAndUpdate(
+      { _id: userId },
+      { imageUrl },
+      { new: true }
+    );
+
+    if (!updatedProfile) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json(updatedProfile);
+  } catch (error) {
+    console.error("Error updating profile imageUrl:", error);
+    return res
+      .status(500)
+      .json({ error: "An error occurred while updating the profile imageUrl" });
+  }
+}
+
+module.exports = {
+  getAllUsers,
+  getProfile,
+  updateProfile,
+  updateProfileImageUrl,
+};
