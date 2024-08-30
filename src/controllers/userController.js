@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const slugify = require("slugify");
-
+const Technologies = require("../models/Technologies");
 async function getAllUsers(req, res) {
   try {
     const allUsers = await User.find();
@@ -48,11 +48,33 @@ async function updateProfile(req, res) {
       slug = slugify(fullName, { lower: true });
     }
 
+    let formattedExperience = [];
+    if (experience && Array.isArray(experience)) {
+      formattedExperience = await Promise.all(
+        experience.map(async (exp) => {
+          const tech = await Technologies.findById(exp.technology);
+          if (tech) {
+            return {
+              technology: tech._id,
+              experienceYears: exp.experienceYears,
+            };
+          } else {
+            console.warn(`Technology with id ${exp.technology} not found.`);
+            return null;
+          }
+        })
+      );
+    }
+
+    formattedExperience = formattedExperience.filter((exp) => exp !== null);
+
     const updatedData = {
       ...(fullName && { fullName }),
       ...(role && { role }),
       ...(bio && { bio }),
-      ...(experience && { experience }),
+      ...(formattedExperience.length > 0 && {
+        technologies: formattedExperience,
+      }),
       slug,
     };
 
