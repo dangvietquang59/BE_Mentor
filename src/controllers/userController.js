@@ -36,7 +36,7 @@ async function getProfile(req, res) {
 async function updateProfile(req, res) {
   try {
     const { userId } = req.params;
-    const { fullName, role, bio, experience } = req.body;
+    const { fullName, role, bio, experience, rating } = req.body;
 
     const existingUser = await User.findById(userId);
     if (!existingUser) {
@@ -69,9 +69,11 @@ async function updateProfile(req, res) {
     formattedExperience = formattedExperience.filter((exp) => exp !== null);
 
     const updatedData = {
+      ...existingUser.toObject(),
       ...(fullName && { fullName }),
       ...(role && { role }),
       ...(bio && { bio }),
+      ...(rating && { rating }),
       ...(formattedExperience.length > 0 && {
         technologies: formattedExperience,
       }),
