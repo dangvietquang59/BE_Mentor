@@ -37,17 +37,28 @@ async function updateProfile(req, res) {
   try {
     const { userId } = req.params;
     const { fullName, role, bio, experience } = req.body;
-    const slug = slugify(fullName, { lower: true });
 
-    const updatedProfile = await User.findOneAndUpdate(
-      { _id: userId },
-      { fullName, role, bio, experience, slug },
-      { new: true }
-    );
-
-    if (!updatedProfile) {
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    let slug = existingUser.slug;
+    if (fullName) {
+      slug = slugify(fullName, { lower: true });
+    }
+
+    const updatedData = {
+      ...(fullName && { fullName }),
+      ...(role && { role }),
+      ...(bio && { bio }),
+      ...(experience && { experience }),
+      slug,
+    };
+
+    const updatedProfile = await User.findByIdAndUpdate(userId, updatedData, {
+      new: true,
+    });
 
     return res.status(200).json(updatedProfile);
   } catch (error) {

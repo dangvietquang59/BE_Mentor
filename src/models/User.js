@@ -8,9 +8,18 @@ const userSchema = new mongoose.Schema(
     role: { type: String },
     bio: { type: String },
     imageUrl: { type: String },
-    experience: { type: String },
+    age: { type: Number },
     rating: { type: String },
     slug: { type: String },
+    technologies: [
+      {
+        technology: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Technologies",
+        },
+        experienceYears: { type: Number, required: true },
+      },
+    ],
   },
   {
     timestamps: true,
