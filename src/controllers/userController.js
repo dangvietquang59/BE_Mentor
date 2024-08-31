@@ -18,7 +18,10 @@ async function getProfile(req, res) {
   try {
     const { userId } = req.params;
 
-    const profile = await User.findOne({ _id: userId });
+    const profile = await User.findOne({ _id: userId }).populate({
+      path: "technologies.technology",
+      select: "name",
+    });
 
     if (!profile) {
       return res.status(404).json({ message: "User not found" });
