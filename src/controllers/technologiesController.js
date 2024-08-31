@@ -1,6 +1,6 @@
 const Technologies = require("../models/Technologies");
 
-async function getAll(res, req) {
+async function getAll(req, res) {
   try {
     const technologies = await Technologies.find();
     return res.status(200).json(technologies);
@@ -11,6 +11,7 @@ async function getAll(res, req) {
       .json({ error: "An error occurred while fetching the technologies." });
   }
 }
+
 module.exports = {
   getAll,
 };
