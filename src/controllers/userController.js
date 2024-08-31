@@ -53,23 +53,24 @@ async function updateProfile(req, res) {
 
     let formattedExperience = [];
     if (experience && Array.isArray(experience)) {
-      formattedExperience = await Promise.all(
-        experience.map(async (exp) => {
-          const tech = await Technologies.findById(exp.technology);
-          if (tech) {
-            return {
-              technology: tech._id,
-              experienceYears: exp.experienceYears,
-            };
-          } else {
-            console.warn(`Technology with id ${exp.technology} not found.`);
-            return null;
-          }
-        })
-      );
+      if (experience.length > 0) {
+        formattedExperience = await Promise.all(
+          experience.map(async (exp) => {
+            const tech = await Technologies.findById(exp.technology);
+            if (tech) {
+              return {
+                technology: tech._id,
+                experienceYears: exp.experienceYears,
+              };
+            } else {
+              console.warn(`Technology with id ${exp.technology} not found.`);
+              return null;
+            }
+          })
+        );
+        formattedExperience = formattedExperience.filter((exp) => exp !== null);
+      }
     }
-
-    formattedExperience = formattedExperience.filter((exp) => exp !== null);
 
     const updatedData = {
       ...existingUser.toObject(),
@@ -77,9 +78,9 @@ async function updateProfile(req, res) {
       ...(role && { role }),
       ...(bio && { bio }),
       ...(rating && { rating }),
-      ...(formattedExperience.length > 0 && {
-        technologies: formattedExperience,
-      }),
+      ...(formattedExperience.length > 0
+        ? { technologies: formattedExperience }
+        : { technologies: [] }),
       slug,
     };
 
@@ -95,6 +96,7 @@ async function updateProfile(req, res) {
       .json({ error: "An error occurred while updating the profile" });
   }
 }
+
 async function updateProfileImageUrl(req, res) {
   try {
     const { userId } = req.params;
