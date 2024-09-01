@@ -1,16 +1,38 @@
 const User = require("../models/User");
 const slugify = require("slugify");
 const Technologies = require("../models/Technologies");
+
 async function getAllUsers(req, res) {
   try {
-    const allUsers = await User.find();
+    const { role, page = 1 } = req.query;
 
-    return res.status(200).json(allUsers);
+    let filter = {};
+    if (role === "Mentor") {
+      filter.role = "Mentor";
+    } else if (role === "Mentee") {
+      filter.role = "Mentee";
+    }
+
+    const limit = 12;
+
+    const skip = (page - 1) * limit;
+
+    const allUsers = await User.find(filter).skip(skip).limit(limit);
+
+    const totalUsers = await User.countDocuments(filter);
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    return res.status(200).json({
+      users: allUsers,
+      currentPage: page,
+      totalPages: totalPages,
+      totalUsers: totalUsers,
+    });
   } catch (error) {
-    console.log("Error fetching user", error);
-    res
+    console.log("Error fetching users", error);
+    return res
       .status(500)
-      .json({ error: "An error occurred while fetching the user." });
+      .json({ error: "An error occurred while fetching the users." });
   }
 }
 
