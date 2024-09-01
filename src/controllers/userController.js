@@ -16,17 +16,37 @@ async function getAllUsers(req, res) {
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    const allUsers = await User.find(filter).skip(skip).limit(limit);
+    const allUsers = await User.find(filter).skip(skip).limit(limit).lean();
 
     const totalUsers = await User.countDocuments(filter);
     const totalPages = Math.ceil(totalUsers / limit);
 
-    const processedUsers = allUsers.map((user) => ({
-      technologies: user.technologies.map((tech) => tech.technology.name),
+    const technologyIds = allUsers.flatMap((user) =>
+      user.technologies.map((tech) => tech.technology)
+    );
+
+    const technologies = await Technologies.find({
+      _id: { $in: technologyIds },
+    }).lean();
+
+    const techMap = technologies.reduce((acc, tech) => {
+      acc[tech._id.toString()] = tech.name;
+      return acc;
+    }, {});
+
+    const enrichedUsers = allUsers.map((user) => ({
+      ...user,
+      technologies: user.technologies.map((tech) => ({
+        ...tech,
+        technology: {
+          _id: tech.technology,
+          name: techMap[tech.technology.toString()] || "Unknown",
+        },
+      })),
     }));
 
     return res.status(200).json({
-      users: processedUsers,
+      users: enrichedUsers,
       currentPage: page,
       totalPages: totalPages,
       totalUsers: totalUsers,
