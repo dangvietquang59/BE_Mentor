@@ -14,7 +14,6 @@ async function getAllUsers(req, res) {
     }
 
     const limit = 12;
-
     const skip = (page - 1) * limit;
 
     const allUsers = await User.find(filter).skip(skip).limit(limit);
@@ -22,8 +21,12 @@ async function getAllUsers(req, res) {
     const totalUsers = await User.countDocuments(filter);
     const totalPages = Math.ceil(totalUsers / limit);
 
+    const processedUsers = allUsers.map((user) => ({
+      technologies: user.technologies.map((tech) => tech.technology.name),
+    }));
+
     return res.status(200).json({
-      users: allUsers,
+      users: processedUsers,
       currentPage: page,
       totalPages: totalPages,
       totalUsers: totalUsers,
