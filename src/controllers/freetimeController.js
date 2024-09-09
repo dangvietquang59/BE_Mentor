@@ -3,8 +3,21 @@ const FreeTime = require("../models/Freetime");
 async function getFreeTime(req, res) {
   try {
     const { userId } = req.params;
-    const freetime = await FreeTime.find({ userId });
-    return res.status(200).json(freetime);
+    const { page = 1 } = req.query;
+    const limit = 12;
+
+    const skip = (page - 1) * limit;
+
+    const freetime = await FreeTime.find({ userId }).skip(skip).limit(limit);
+
+    const totalRecords = await FreeTime.countDocuments({ userId });
+
+    return res.status(200).json({
+      page: parseInt(page, 10),
+      totalPages: Math.ceil(totalRecords / limit),
+      totalRecords,
+      freetime,
+    });
   } catch (error) {
     console.log("Error when fetching freetime", error);
     return res
@@ -23,21 +36,20 @@ async function createFreeTime(req, res) {
 
     const existingFreeTimes = await FreeTime.find({
       userId,
-      $or: [
-        {
-          $and: [
-            { freeDate: freeDate },
-            { startTime: { $lte: endTime } },
-            { endTime: { $gte: startTime } },
-          ],
-        },
-      ],
+      freeDate,
     });
 
     for (const time of existingFreeTimes) {
+      const existingStartDate = new Date(
+        `${time.freeDate}T${time.startTime}:00.000Z`
+      );
+      const existingEndDate = new Date(
+        `${time.freeDate}T${time.endTime}:00.000Z`
+      );
+
       if (
-        newStartDate < new Date(`${time.freeDate}T${time.endTime}:00.000Z`) &&
-        newEndDate > new Date(`${time.freeDate}T${time.startTime}:00.000Z`)
+        (newStartDate < existingEndDate && newEndDate > existingStartDate) ||
+        (newStartDate >= existingStartDate && newStartDate < existingEndDate)
       ) {
         return res
           .status(400)
