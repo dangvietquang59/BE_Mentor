@@ -8,7 +8,10 @@ async function getFreeTime(req, res) {
 
     const skip = (page - 1) * limit;
 
-    const freetime = await FreeTime.find({ userId }).skip(skip).limit(limit);
+    const freetime = await FreeTime.find({ userId })
+      .sort({ date: 1 })
+      .skip(skip)
+      .limit(limit);
 
     const totalRecords = await FreeTime.countDocuments({ userId });
 
