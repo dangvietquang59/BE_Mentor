@@ -4,14 +4,23 @@ const ChatGroup = require("../models/ChatGroup");
 async function createChatGroup(req, res) {
   try {
     const { name, members } = req.body;
+
+    members.sort();
+
+    const existingGroup = await ChatGroup.findOne({
+      members: { $all: members },
+    });
+    if (existingGroup) {
+      return res.status(400).json({ error: "Nhóm chat đã tồn tại" });
+    }
+
     const newGroup = new ChatGroup({ name, members });
     await newGroup.save();
     res.status(201).json(newGroup);
   } catch (error) {
-    res.status(500).json({ error: "Unable to create group" });
+    res.status(500).json({ error: "Không thể tạo nhóm" });
   }
 }
-
 // Get all chat groups
 async function getAllChatGroups(req, res) {
   try {
@@ -56,7 +65,25 @@ async function deleteChatGroup(req, res) {
     res.status(500).json({ error: "Unable to delete group" });
   }
 }
+async function getChatGroupsByUserId(req, res) {
+  try {
+    const userId = req.params.userId;
 
+    const groups = await ChatGroup.find({ members: userId }).populate(
+      "members"
+    );
+
+    if (groups.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Không tìm thấy nhóm chat nào cho người dùng này" });
+    }
+
+    res.status(200).json(groups);
+  } catch (error) {
+    res.status(500).json({ error: "Không thể lấy nhóm chat" });
+  }
+}
 module.exports = {
   createChatGroup,
   deleteChatGroup,
@@ -64,4 +91,5 @@ module.exports = {
   getChatGroupById,
   getAllChatGroups,
   createChatGroup,
+  getChatGroupsByUserId,
 };

@@ -7,5 +7,5 @@ router.get("/", chatGroupController.getAllChatGroups);
 router.get("/:id", chatGroupController.getChatGroupById);
 router.put("/:id", chatGroupController.updateChatGroup);
 router.delete("/:id", chatGroupController.deleteChatGroup);
-
+router.get("/user/:userId", chatGroupController.getChatGroupsByUserId);
 module.exports = router;
