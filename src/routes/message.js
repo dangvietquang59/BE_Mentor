@@ -1,6 +1,5 @@
 const express = require("express");
 const multer = require("multer");
-const router = express.Router();
 const messageController = require("../controllers/messageController");
 
 const storage = multer.diskStorage({
@@ -14,14 +13,17 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-router.post(
-  "/",
-  upload.array("attachments", 10),
-  messageController.createMessage
-);
-router.get("/group/:groupId", messageController.getMessagesByGroup);
-router.get("/:id", messageController.getMessageById);
-router.put("/:id", messageController.updateMessage);
-router.delete("/:id", messageController.deleteMessage);
+module.exports = function (io) {
+  const router = express.Router();
 
-module.exports = router;
+  router.post("/", upload.array("attachments", 10), (req, res) =>
+    messageController.createMessage(req, res, io)
+  );
+
+  router.get("/group/:groupId", messageController.getMessagesByGroup);
+  router.get("/:id", messageController.getMessageById);
+  router.put("/:id", messageController.updateMessage);
+  router.delete("/:id", messageController.deleteMessage);
+
+  return router;
+};

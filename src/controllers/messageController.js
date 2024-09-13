@@ -3,7 +3,7 @@ const ChatGroup = require("../models/ChatGroup");
 const User = require("../models/User");
 
 // Create a new message
-async function createMessage(req, res) {
+async function createMessage(req, res, io) {
   try {
     const { senderId, content, groupId } = req.body;
     const group = await ChatGroup.findById(groupId);
@@ -30,6 +30,9 @@ async function createMessage(req, res) {
     });
 
     await message.save();
+
+    io.to(groupId).emit("newMessage", { message });
+
     res
       .status(200)
       .json({ message: "Message sent successfully", data: message });
