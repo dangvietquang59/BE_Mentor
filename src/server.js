@@ -10,7 +10,6 @@ const bookingRoutes = require("./routes/booking");
 const uploadRoutes = require("./routes/upload");
 const technologiesRoutues = require("./routes/technologies");
 const chatGroupRoutes = require("./routes/chat");
-const messageRoutes = require("./routes/message")(io);
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -24,6 +23,7 @@ const io = socketio(server, {
     credentials: true,
   },
 });
+const messageRoutes = require("./routes/message")(io);
 
 db();
 
