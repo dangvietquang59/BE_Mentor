@@ -7,13 +7,11 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       require: true,
     },
-    freetimeId: {
+    freetimeDetailId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "FreeTime",
+      ref: "FreeTimeDetail",
       require: true,
     },
-    startDate: { type: String, require: true },
-    startTime: { type: String, require: true },
     status: { type: String, require: true, default: "Pending" },
   },
   {

@@ -1,63 +1,101 @@
-const BookingDetails = require("../models/BookingDetails");
+// controllers/bookingController.js
+
 const Booking = require("../models/Booking");
-const FreeTime = require("../models/Freetime");
+const FreeTimeDetail = require("../models/FreetimeDetail");
 
-async function bookTimeSlot(req, res) {
+// Create a new booking
+async function createBooking(req, res) {
   try {
-    const { mentorId, startDate, startTime, endTime } = req.body;
-    const menteeId = req.user.userId;
+    const { menteeId, freetimeDetailId } = req.body;
 
-    // Tìm lịch rảnh của mentor
-    const freeTimeSlot = await FreeTime.findOne({
-      userId: mentorId,
-      freeDate: startDate,
-      startTime: { $lte: startTime },
-      endTime: { $gte: endTime },
-    });
-
-    if (!freeTimeSlot) {
-      return res.status(400).json({
-        message: "Thời gian đặt không nằm trong thời gian rảnh của mentor.",
-      });
+    // Check if FreeTimeDetail exists
+    const freeTimeDetail = await FreeTimeDetail.findById(freetimeDetailId);
+    if (!freeTimeDetail) {
+      return res.status(404).json({ message: "FreeTimeDetail not found" });
     }
 
-    // Kiểm tra lịch đặt trùng lặp
-    const overlappingBooking = await BookingDetails.findOne({
-      bookingId: freeTimeSlot._id,
-      from: { $lt: new Date(`${startDate}T${endTime}:00.000Z`) },
-      to: { $gt: new Date(`${startDate}T${startTime}:00.000Z`) },
-    });
+    // Create and save the booking
+    const newBooking = new Booking({ menteeId, freetimeDetailId });
+    await newBooking.save();
 
-    if (overlappingBooking) {
-      return res
-        .status(400)
-        .json({ message: "Thời gian đặt bị trùng với một lịch đặt khác." });
-    }
-
-    // Tạo lịch đặt mới
-    const newBooking = await Booking.create({
-      menteeId: menteeId,
-      freetimeId: freeTimeSlot._id,
-      startDate,
-      startTime,
-      status: "Pending",
-    });
-
-    await BookingDetails.create({
-      bookingId: newBooking._id,
-      from: new Date(`${startDate}T${startTime}:00.000Z`),
-      to: new Date(`${startDate}T${endTime}:00.000Z`),
-    });
-
-    res
-      .status(201)
-      .json({ message: "Lịch đã được tạo thành công.", booking: newBooking });
+    res.status(201).json(newBooking);
   } catch (error) {
-    console.error("Error booking time slot:", error);
-    res.status(500).json({ message: "Có lỗi xảy ra khi đặt lịch." });
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Get all bookings
+async function getAllBookings(req, res) {
+  try {
+    const bookings = await Booking.find()
+      .populate("menteeId")
+      .populate("freetimeDetailId");
+    res.status(200).json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Get a specific booking by ID
+async function getBookingById(req, res) {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id)
+      .populate("menteeId")
+      .populate("freetimeDetailId");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.status(200).json(booking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Update a booking by ID
+async function updateBooking(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.status(200).json(updatedBooking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Delete a booking by ID
+async function deleteBooking(req, res) {
+  try {
+    const { id } = req.params;
+    const deletedBooking = await Booking.findByIdAndDelete(id);
+
+    if (!deletedBooking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.status(200).json({ message: "Booking deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 }
 
 module.exports = {
-  bookTimeSlot,
+  createBooking,
+  getAllBookings,
+  getBookingById,
+  updateBooking,
+  deleteBooking,
 };

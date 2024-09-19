@@ -1,6 +1,14 @@
 const Post = require("../models/Posts");
 const Comment = require("../models/Comments");
 const slugify = require("slugify");
+const moment = require("moment-timezone");
+
+const timezone = "Asia/Ho_Chi_Minh"; // Múi giờ Việt Nam
+
+// Helper function to get current time in Vietnamese timezone
+function getCurrentTime() {
+  return moment().tz(timezone).format();
+}
 
 async function getAllPost(req, res) {
   try {
@@ -19,12 +27,14 @@ async function createNewPost(req, res) {
     const { title, content } = req.body;
     const userId = req.user.userId;
     const slug = slugify(title, { lower: true });
+    const createdAt = getCurrentTime();
 
     const newPost = new Post({
       title,
       content,
       userId,
       slug,
+      createdAt,
     });
 
     const savedPost = await newPost.save();
@@ -58,11 +68,12 @@ async function updatePost(req, res) {
   const { postId } = req.params;
   const { title, content } = req.body;
   const slug = slugify(title, { lower: true });
+  const updatedAt = getCurrentTime();
 
   try {
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
-      { title, content, slug },
+      { title, content, slug, updatedAt },
       { new: true }
     );
 
@@ -98,7 +109,8 @@ async function deletePost(req, res) {
   }
 }
 
-//comments
+// Comments
+
 async function getAllComments(req, res) {
   try {
     const { postId } = req.params;
@@ -117,33 +129,36 @@ async function createNewComment(req, res) {
     const { content, parentCommentId } = req.body;
     const { postId } = req.params;
     const userId = req.user.userId;
+    const createdAt = getCurrentTime();
 
     const newComment = new Comment({
       userId,
       postId,
       content,
       parentCommentId,
+      createdAt,
     });
 
     const savedComment = await newComment.save();
 
     return res.status(200).json(savedComment);
   } catch (error) {
-    console.error("Error create new comments:", error);
+    console.error("Error creating new comment:", error);
     return res
       .status(500)
-      .json({ error: "An error occurred while create new comments" });
+      .json({ error: "An error occurred while creating new comment" });
   }
 }
 
 async function updateComment(req, res) {
   const { commentId } = req.params;
   const { content } = req.body;
+  const updatedAt = getCurrentTime();
 
   try {
     const updatedComment = await Comment.findByIdAndUpdate(
       commentId,
-      { content },
+      { content, updatedAt },
       { new: true }
     );
 
@@ -162,6 +177,7 @@ async function updateComment(req, res) {
       .json({ error: "An error occurred while updating the comment." });
   }
 }
+
 async function deleteComment(req, res) {
   const { commentId } = req.params;
 
@@ -183,6 +199,7 @@ async function deleteComment(req, res) {
       .json({ error: "An error occurred while deleting the comment." });
   }
 }
+
 module.exports = {
   getAllPost,
   createNewPost,

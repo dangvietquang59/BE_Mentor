@@ -1,25 +1,42 @@
 const FreeTime = require("../models/Freetime");
+const FreeTimeDetail = require("../models/FreetimeDetail");
+const freeTimeDetail = require("../models/FreetimeDetail");
 
+// Hàm hỗ trợ chuyển đổi múi giờ sang giờ Việt Nam
+function convertToVietnamTime(date) {
+  const utcDate = new Date(date);
+  // Chuyển đổi giờ UTC sang giờ Việt Nam (UTC+7)
+  utcDate.setHours(utcDate.getHours() + 7);
+  return utcDate;
+}
+
+// Lấy danh sách FreeTime
 async function getFreeTime(req, res) {
   try {
     const { userId } = req.params;
     const { page = 1 } = req.query;
     const limit = 12;
-
     const skip = (page - 1) * limit;
 
     const freetime = await FreeTime.find({ userId })
       .sort({ date: 1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate("freeTimeDeail");
 
     const totalRecords = await FreeTime.countDocuments({ userId });
+
+    // Chuyển đổi tất cả thời gian sang múi giờ Việt Nam
+    const freetimeVietnam = freetime.map((ft) => ({
+      ...ft._doc,
+      freeDate: convertToVietnamTime(ft.freeDate),
+    }));
 
     return res.status(200).json({
       page: parseInt(page, 10),
       totalPages: Math.ceil(totalRecords / limit),
       totalRecords,
-      freetime,
+      freetime: freetimeVietnam,
     });
   } catch (error) {
     console.log("Error when fetching freetime", error);
@@ -29,46 +46,68 @@ async function getFreeTime(req, res) {
   }
 }
 
+// Tạo mới FreeTime
 async function createFreeTime(req, res) {
   try {
-    const { freeDate, startTime, endTime } = req.body;
-    const userId = req.user.userId;
+    const { userId, freeDate, freeTimeDetail } = req.body;
 
-    const newStartDate = new Date(`${freeDate}T${startTime}:00.000Z`);
-    const newEndDate = new Date(`${freeDate}T${endTime}:00.000Z`);
-
-    const existingFreeTimes = await FreeTime.find({
-      userId,
-      freeDate,
-    });
-
-    for (const time of existingFreeTimes) {
-      const existingStartDate = new Date(
-        `${time.freeDate}T${time.startTime}:00.000Z`
-      );
-      const existingEndDate = new Date(
-        `${time.freeDate}T${time.endTime}:00.000Z`
-      );
-
-      if (
-        (newStartDate < existingEndDate && newEndDate > existingStartDate) ||
-        (newStartDate >= existingStartDate && newStartDate < existingEndDate)
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Thời gian rảnh trùng lặp với lịch đã có." });
-      }
+    if (!freeTimeDetail || !freeTimeDetail.length) {
+      return res.status(400).json({ error: "FreeTimeDetail is required." });
     }
 
-    const newFreeTime = new FreeTime({
-      userId,
-      freeDate,
-      startTime,
-      endTime,
+    const { from, to, name } = freeTimeDetail[0];
+
+    if (new Date(from) >= new Date(to)) {
+      return res
+        .status(400)
+        .json({ error: "'from' time must be earlier than 'to' time." });
+    }
+
+    let existingFreeTime = await FreeTime.findOne({
+      userId: userId,
+      freeDate: freeDate,
+    }).populate("freeTimeDeail");
+
+    if (existingFreeTime) {
+      const overlappingTime = existingFreeTime.freeTimeDeail.some((detail) => {
+        const detailFrom = new Date(detail.from);
+        const detailTo = new Date(detail.to);
+
+        return (
+          (new Date(from) < detailTo && new Date(from) >= detailFrom) ||
+          (new Date(to) <= detailTo && new Date(to) > detailFrom) ||
+          (new Date(from) <= detailFrom && new Date(to) >= detailTo)
+        );
+      });
+
+      if (overlappingTime) {
+        return res
+          .status(400)
+          .json({ error: "Time slot overlaps with existing free time." });
+      }
+    } else {
+      // Nếu không tồn tại FreeTime, tạo FreeTime mới
+      existingFreeTime = new FreeTime({
+        userId: userId,
+        freeDate: freeDate,
+      });
+      await existingFreeTime.save(); // Lưu FreeTime trước để có _id
+    }
+
+    // Tạo FreeTimeDetail với freeTimeId là _id của FreeTime mới hoặc đã tồn tại
+    const newFreeTimeDetail = await FreeTimeDetail.create({
+      freeTimeId: existingFreeTime._id,
+      name,
+      from,
+      to,
+      status: "Pending",
     });
 
-    const savedFreeTime = await newFreeTime.save();
-    res.status(201).json(savedFreeTime);
+    // Thêm FreeTimeDetail vào FreeTime và lưu lại
+    existingFreeTime.freeTimeDeail.push(newFreeTimeDetail._id);
+    await existingFreeTime.save();
+
+    res.status(201).json({ message: "Free time created successfully" });
   } catch (error) {
     console.error("Error creating free time:", error);
     res
@@ -77,14 +116,18 @@ async function createFreeTime(req, res) {
   }
 }
 
+// Cập nhật FreeTime
 async function updateFreeTime(req, res) {
   try {
     const { freetimeId } = req.params;
     const { freeDate, startTime, endTime } = req.body;
     const userId = req.user.userId;
 
-    const newStartDate = new Date(`${freeDate}T${startTime}:00.000Z`);
-    const newEndDate = new Date(`${freeDate}T${endTime}:00.000Z`);
+    // Chuyển đổi thời gian sang múi giờ Việt Nam
+    const newStartDate = convertToVietnamTime(
+      `${freeDate}T${startTime}:00.000Z`
+    );
+    const newEndDate = convertToVietnamTime(`${freeDate}T${endTime}:00.000Z`);
 
     const existingFreeTimes = await FreeTime.find({
       userId,
@@ -126,6 +169,7 @@ async function updateFreeTime(req, res) {
   }
 }
 
+// Xóa FreeTime
 async function deleteFreeTime(req, res) {
   try {
     const { freetimeId } = req.params;

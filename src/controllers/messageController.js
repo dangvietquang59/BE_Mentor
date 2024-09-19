@@ -1,6 +1,12 @@
+const moment = require("moment-timezone");
 const Message = require("../models/Message");
 const ChatGroup = require("../models/ChatGroup");
 const User = require("../models/User");
+
+// Convert a date to Vietnam timezone
+function toVietnamTime(date) {
+  return moment(date).tz("Asia/Ho_Chi_Minh").format("YYYY-MM-DD HH:mm:ss");
+}
 
 // Create a new message
 async function createMessage(req, res, io) {
@@ -27,6 +33,7 @@ async function createMessage(req, res, io) {
       content,
       group: group._id,
       attachments,
+      timestamp: toVietnamTime(new Date()), // Set timestamp in Vietnam time
     });
 
     await message.save();
@@ -47,7 +54,14 @@ async function getMessagesByGroup(req, res) {
     const messages = await Message.find({ group: req.params.groupId }).populate(
       "sender"
     );
-    res.status(200).json(messages);
+
+    // Convert timestamps to Vietnam time
+    const messagesWithVietnamTime = messages.map((msg) => ({
+      ...msg.toObject(),
+      timestamp: toVietnamTime(msg.timestamp),
+    }));
+
+    res.status(200).json(messagesWithVietnamTime);
   } catch (error) {
     res.status(500).json({ error: "Unable to fetch messages" });
   }
@@ -60,7 +74,14 @@ async function getMessageById(req, res) {
       "sender group"
     );
     if (!message) return res.status(404).json({ error: "Message not found" });
-    res.status(200).json(message);
+
+    // Convert timestamp to Vietnam time
+    const messageWithVietnamTime = {
+      ...message.toObject(),
+      timestamp: toVietnamTime(message.timestamp),
+    };
+
+    res.status(200).json(messageWithVietnamTime);
   } catch (error) {
     res.status(500).json({ error: "Unable to fetch message" });
   }
@@ -73,6 +94,12 @@ async function updateMessage(req, res) {
       new: true,
     });
     if (!message) return res.status(404).json({ error: "Message not found" });
+
+    // Convert timestamp to Vietnam time if it's updated
+    if (req.body.timestamp) {
+      message.timestamp = toVietnamTime(req.body.timestamp);
+    }
+
     res.status(200).json(message);
   } catch (error) {
     res.status(500).json({ error: "Unable to update message" });

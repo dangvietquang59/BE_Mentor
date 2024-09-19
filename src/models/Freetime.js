@@ -8,8 +8,13 @@ const freeTimeSchema = new mongoose.Schema(
       required: true,
     },
     freeDate: { type: Date, required: true },
-    startTime: { type: String, required: true },
-    endTime: { type: String, required: true },
+    freeTimeDeail: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "FreeTimeDetail",
+        required: true,
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -20,6 +20,8 @@ const userSchema = new mongoose.Schema(
         experienceYears: { type: Number, required: true },
       },
     ],
+    coin: { type: Number, default: 0 },
+    pricePerHour: { type: Number },
   },
   {
     timestamps: true,
