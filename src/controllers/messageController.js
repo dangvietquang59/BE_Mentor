@@ -2,6 +2,7 @@ const moment = require("moment-timezone");
 const Message = require("../models/Message");
 const ChatGroup = require("../models/ChatGroup");
 const User = require("../models/User");
+const cloudinary = require("../config/cloudinary/index");
 
 // Chuyển đổi ngày giờ về múi giờ Việt Nam
 function toVietnamTime(date) {
@@ -23,11 +24,24 @@ async function createMessage(req, res, io) {
 
     let attachments = [];
     if (req.files && req.files.length > 0) {
-      attachments = req.files.map((file) => ({
-        filename: file.originalname,
-        path: file.path,
-        mimetype: file.mimetype,
-      }));
+      attachments = await Promise.all(
+        req.files.map(async (file) => {
+          const result = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            );
+            stream.end(file.buffer);
+          });
+          return {
+            filename: file.originalname,
+            url: result.secure_url,
+            mimetype: file.mimetype,
+          };
+        })
+      );
     }
 
     // Tạo tin nhắn mới

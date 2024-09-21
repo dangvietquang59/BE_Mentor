@@ -1,26 +1,8 @@
 const express = require("express");
 const multer = require("multer");
 const messageController = require("../controllers/messageController");
-const fs = require("fs");
-const path = require("path");
 
-// Tạo thư mục uploads nếu chưa tồn tại
-const uploadsDir = path.join(__dirname, "../../uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Cấu hình multer để lưu trữ file
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 module.exports = function (io) {
   const router = express.Router();
