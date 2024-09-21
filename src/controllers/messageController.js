@@ -44,7 +44,7 @@ async function createMessage(req, res, io) {
         })
       );
     }
-
+    console.log("attachments", attachments);
     // Tạo tin nhắn mới
     const message = new Message({
       sender: sender._id,
