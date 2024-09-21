@@ -4,11 +4,13 @@ const messageController = require("../controllers/messageController");
 const fs = require("fs");
 const path = require("path");
 
+// Tạo thư mục uploads nếu chưa tồn tại
 const uploadsDir = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
+  fs.mkdirSync(uploadsDir, { recursive: true }); // Đảm bảo tạo cả các thư mục cha nếu cần
 }
 
+// Cấu hình multer để lưu trữ file
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadsDir);

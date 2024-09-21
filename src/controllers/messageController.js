@@ -12,9 +12,11 @@ function toVietnamTime(date) {
 async function createMessage(req, res, io) {
   try {
     const { senderId, content, groupId } = req.body;
+
     const group = await ChatGroup.findById(groupId);
     const sender = await User.findById(senderId);
 
+    // Kiểm tra xem nhóm và người gửi có tồn tại không
     if (!group || !sender) {
       return res.status(404).json({ error: "Group or sender not found" });
     }
@@ -28,9 +30,10 @@ async function createMessage(req, res, io) {
       }));
     }
 
+    // Tạo tin nhắn mới
     const message = new Message({
       sender: sender._id,
-      content,
+      content: content || "", // Đảm bảo content luôn có giá trị
       group: group._id,
       attachments,
       timestamp: toVietnamTime(new Date()),
@@ -38,12 +41,14 @@ async function createMessage(req, res, io) {
 
     await message.save();
 
+    // Phát sự kiện mới qua Socket.IO
     io.to(groupId).emit("newMessage", { message });
 
     res
       .status(200)
       .json({ message: "Message sent successfully", data: message });
   } catch (error) {
+    console.error("Error in createMessage:", error); // In lỗi ra console để dễ dàng kiểm tra
     res.status(500).json({ error: "Unable to send message" });
   }
 }
