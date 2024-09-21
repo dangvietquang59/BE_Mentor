@@ -26,25 +26,32 @@ async function createMessage(req, res, io) {
     if (req.files && req.files.length > 0) {
       attachments = await Promise.all(
         req.files.map(async (file) => {
-          const result = await new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              (error, result) => {
-                if (error) reject(error);
-                else resolve(result);
-              }
-            );
-            stream.end(file.buffer);
-          });
-          console.log("result", result);
-          return {
-            filename: file.originalname,
-            url: result.secure_url,
-            mimetype: file.mimetype,
-          };
+          try {
+            const result = await new Promise((resolve, reject) => {
+              const stream = cloudinary.uploader.upload_stream(
+                (error, result) => {
+                  if (error) reject(error);
+                  else resolve(result);
+                }
+              );
+              stream.end(file.buffer);
+            });
+            return {
+              filename: file.originalname,
+              url: result.secure_url,
+              mimetype: file.mimetype,
+            };
+          } catch (error) {
+            console.error("Error uploading file:", error);
+            return null; // Trả về null nếu có lỗi
+          }
         })
       );
+
+      // Lọc các tệp không thành công (null)
+      attachments = attachments.filter(Boolean);
     }
-    console.log("attachments", attachments);
+
     // Tạo tin nhắn mới
     const message = new Message({
       sender: sender._id,
@@ -53,7 +60,7 @@ async function createMessage(req, res, io) {
       attachments,
       timestamp: toVietnamTime(new Date()),
     });
-    console.log("message", message);
+
     await message.save();
 
     // Phát sự kiện mới qua Socket.IO
