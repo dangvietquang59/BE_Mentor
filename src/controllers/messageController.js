@@ -33,7 +33,7 @@ async function createMessage(req, res, io) {
       content,
       group: group._id,
       attachments,
-      timestamp: toVietnamTime(new Date()), // Set timestamp in Vietnam time
+      timestamp: toVietnamTime(new Date()),
     });
 
     await message.save();
