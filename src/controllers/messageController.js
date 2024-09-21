@@ -53,7 +53,7 @@ async function createMessage(req, res, io) {
       attachments,
       timestamp: toVietnamTime(new Date()),
     });
-
+    console.log("message", message);
     await message.save();
 
     // Phát sự kiện mới qua Socket.IO
