@@ -36,11 +36,13 @@ async function createMessage(req, res, io) {
               );
               stream.end(file.buffer);
             });
-            return {
-              filename: file.originalname,
-              url: result.secure_url,
-              mimetype: file.mimetype,
-            };
+            if (result) {
+              return {
+                filename: file.originalname,
+                url: result.secure_url,
+                mimetype: file.mimetype,
+              };
+            }
           } catch (error) {
             console.error("Error uploading file:", error);
             return null; // Trả về null nếu có lỗi
