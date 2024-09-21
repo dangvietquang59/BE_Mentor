@@ -7,7 +7,7 @@ const path = require("path");
 // Tạo thư mục uploads nếu chưa tồn tại
 const uploadsDir = path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true }); // Đảm bảo tạo cả các thư mục cha nếu cần
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 // Cấu hình multer để lưu trữ file
