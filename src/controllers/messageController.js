@@ -35,6 +35,7 @@ async function createMessage(req, res, io) {
             );
             stream.end(file.buffer);
           });
+          console.log("result", result);
           return {
             filename: file.originalname,
             url: result.secure_url,
