@@ -16,7 +16,7 @@ const messageSchema = new mongoose.Schema(
     attachments: [
       {
         filename: { type: String },
-        path: { type: String },
+        url: { type: String },
         mimetype: { type: String },
       },
     ],
