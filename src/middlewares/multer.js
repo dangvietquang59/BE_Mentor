@@ -1,6 +1,8 @@
 const multer = require("multer");
-
 const storage = multer.memoryStorage();
-const singleUpload = multer({ storage }).single("file");
 
-module.exports = { singleUpload };
+const upload = multer({ storage: storage });
+
+const singleUpload = upload.single("file");
+
+module.exports = singleUpload;
