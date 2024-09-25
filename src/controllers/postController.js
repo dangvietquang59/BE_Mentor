@@ -12,8 +12,26 @@ function getCurrentTime() {
 
 async function getAllPost(req, res) {
   try {
-    const allPosts = await Post.find();
-    return res.status(200).json(allPosts);
+    const { page = 1, limit = 10 } = req.query;
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const allPosts = await Post.find()
+      .skip(skip)
+      .limit(limitNumber)
+      .populate("userId");
+
+    const totalPosts = await Post.countDocuments();
+    const totalPages = Math.ceil(totalPosts / limitNumber);
+
+    return res.status(200).json({
+      totalPosts,
+      totalPages,
+      currentPage: pageNumber,
+      posts: allPosts,
+    });
   } catch (error) {
     console.error("Error fetching posts:", error);
     return res
