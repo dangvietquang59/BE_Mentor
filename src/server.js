@@ -52,7 +52,7 @@ app.use("/messages", messageRoutes);
 app.use("/uploads", express.static("uploads"));
 
 cron.schedule("*/1 * * * *", () => {
-  console.log("Running a task every 1 minute");
+  // console.log("Running a task every 1 minute");
 });
 
 io.on("connection", (socket) => {
@@ -60,13 +60,15 @@ io.on("connection", (socket) => {
 
   socket.on("joinRoom", (groupId) => {
     socket.join(groupId);
-    console.log(`User joined room: ${groupId}`);
+    console.log(`User joined room: ${groupId} id:${socket.id}`);
   });
 
   socket.on("sendMessage", (messageData) => {
     const { groupId, message } = messageData;
-    io.to(groupId).emit("newMessage", message);
-    console.log(`Message sent to group ${groupId}: ${message}`);
+    // Sử dụng socket.to(groupId) để phát tin nhắn đến group cụ thể
+    console.log("messageData", messageData);
+    socket.to(groupId).emit("newMessage", message);
+    console.log(`Message sent to group ${groupId}: ${message} id:${socket.id}`);
   });
 
   socket.on("disconnect", () => {

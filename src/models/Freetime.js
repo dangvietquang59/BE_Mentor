@@ -8,7 +8,7 @@ const freeTimeSchema = new mongoose.Schema(
       required: true,
     },
     freeDate: { type: Date, required: true },
-    freeTimeDeail: [
+    freeTimeDetail: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "FreeTimeDetail",

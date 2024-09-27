@@ -25,7 +25,7 @@ async function login(req, res) {
     const accessToken = jwt.sign(
       { userId: user._id },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "2h" }
+      { expiresIn: "30d" }
     );
 
     const refreshToken = jwt.sign(
@@ -45,7 +45,6 @@ async function login(req, res) {
       message: "Đăng nhập thành công.",
       data: userInformation,
       accessToken,
-      refreshToken,
     });
   } catch (error) {
     console.error("Error during login:", error);
