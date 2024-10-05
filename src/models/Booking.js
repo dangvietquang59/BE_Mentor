@@ -7,6 +7,11 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       require: true,
     },
+    mentorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      require: true,
+    },
     freetimeDetailId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "FreeTimeDetail",

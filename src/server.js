@@ -11,6 +11,7 @@ const bookingRoutes = require("./routes/booking");
 const uploadRoutes = require("./routes/upload");
 const technologiesRoutues = require("./routes/technologies");
 const chatGroupRoutes = require("./routes/chat");
+const jobTitleRoutes = require("./routes/jobtitle");
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -49,6 +50,7 @@ app.use("/v2", uploadRoutes);
 app.use("/technologies", technologiesRoutues);
 app.use("/chat-groups", chatGroupRoutes);
 app.use("/messages", messageRoutes);
+app.use("/jobTitle", jobTitleRoutes);
 app.use("/uploads", express.static("uploads"));
 
 cron.schedule("*/1 * * * *", () => {
@@ -57,7 +59,7 @@ cron.schedule("*/1 * * * *", () => {
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
-
+  //chat
   socket.on("joinRoom", (groupId) => {
     socket.join(groupId);
     console.log(`User joined room: ${groupId} id:${socket.id}`);
@@ -65,12 +67,26 @@ io.on("connection", (socket) => {
 
   socket.on("sendMessage", (messageData) => {
     const { groupId, message } = messageData;
-    // Sử dụng socket.to(groupId) để phát tin nhắn đến group cụ thể
+
     console.log("messageData", messageData);
     socket.to(groupId).emit("newMessage", message);
     console.log(`Message sent to group ${groupId}: ${message} id:${socket.id}`);
   });
+  //web rtc
+  socket.on("offer", (data) => {
+    // Phát offer từ một peer đến peer khác
+    socket.to(data.target).emit("offer", data);
+  });
 
+  socket.on("answer", (data) => {
+    // Phát answer từ một peer đến peer khác
+    socket.to(data.target).emit("answer", data);
+  });
+
+  socket.on("ice-candidate", (data) => {
+    // Phát ICE candidate từ một peer đến peer khác
+    socket.to(data.target).emit("ice-candidate", data);
+  });
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
   });

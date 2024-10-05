@@ -1,12 +1,10 @@
-// controllers/bookingController.js
-
 const Booking = require("../models/Booking");
 const FreeTimeDetail = require("../models/FreetimeDetail");
 
 // Create a new booking
 async function createBooking(req, res) {
   try {
-    const { menteeId, freetimeDetailId } = req.body;
+    const { menteeId, mentorId, freetimeDetailId } = req.body;
 
     // Check if FreeTimeDetail exists
     const freeTimeDetail = await FreeTimeDetail.findById(freetimeDetailId);
@@ -14,8 +12,20 @@ async function createBooking(req, res) {
       return res.status(404).json({ message: "FreeTimeDetail not found" });
     }
 
+    // Check if a booking already exists for this menteeId, mentorId, and freetimeDetailId
+    const existingBooking = await Booking.findOne({
+      menteeId,
+      mentorId,
+      freetimeDetailId,
+    });
+    if (existingBooking) {
+      return res
+        .status(400)
+        .json({ message: "Booking already exists for this detail" });
+    }
+
     // Create and save the booking
-    const newBooking = new Booking({ menteeId, freetimeDetailId });
+    const newBooking = new Booking({ menteeId, mentorId, freetimeDetailId });
     await newBooking.save();
 
     res.status(201).json(newBooking);
@@ -29,6 +39,7 @@ async function getAllBookings(req, res) {
   try {
     const bookings = await Booking.find()
       .populate("menteeId")
+      .populate("mentorId")
       .populate("freetimeDetailId");
     res.status(200).json(bookings);
   } catch (error) {
@@ -42,6 +53,7 @@ async function getBookingById(req, res) {
     const { id } = req.params;
     const booking = await Booking.findById(id)
       .populate("menteeId")
+      .populate("mentorId")
       .populate("freetimeDetailId");
 
     if (!booking) {
@@ -49,6 +61,39 @@ async function getBookingById(req, res) {
     }
 
     res.status(200).json(booking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// Get bookings by menteeId or mentorId (get by userId)
+async function getBookingsByUserId(req, res) {
+  try {
+    const { userId } = req.params;
+
+    const role = req.query.role;
+
+    let filter = {};
+    if (role === "mentee") {
+      filter = { menteeId: userId };
+    } else if (role === "mentor") {
+      filter = { mentorId: userId };
+    } else {
+      return res.status(400).json({ message: "Invalid role provided" });
+    }
+
+    const bookings = await Booking.find(filter)
+      .populate("menteeId")
+      .populate("mentorId")
+      .populate("freetimeDetailId");
+
+    if (bookings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No bookings found for this user" });
+    }
+
+    res.status(200).json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -96,6 +141,7 @@ module.exports = {
   createBooking,
   getAllBookings,
   getBookingById,
+  getBookingsByUserId,
   updateBooking,
   deleteBooking,
 };
