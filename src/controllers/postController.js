@@ -19,6 +19,7 @@ async function getAllPost(req, res) {
     const skip = (pageNumber - 1) * limitNumber;
 
     const allPosts = await Post.find()
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber)
       .populate("userId");
@@ -51,7 +52,7 @@ async function createNewPost(req, res) {
       title,
       content,
       userId,
-      slug,
+      slug: `${slug}-${userId}`,
       createdAt,
     });
 
