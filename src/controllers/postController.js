@@ -127,95 +127,22 @@ async function deletePost(req, res) {
       .json({ error: "An error occurred while deleting the post." });
   }
 }
-
-// Comments
-
-async function getAllComments(req, res) {
+async function getPostBySlug(req, res) {
   try {
-    const { postId } = req.params;
-    const allComments = await Comment.find({ postId });
-    return res.status(200).json(allComments);
-  } catch (error) {
-    console.error("Error fetching comments:", error);
-    return res
-      .status(500)
-      .json({ error: "An error occurred while fetching comments" });
-  }
-}
+    const { slug } = req.params;
 
-async function createNewComment(req, res) {
-  try {
-    const { content, parentCommentId } = req.body;
-    const { postId } = req.params;
-    const userId = req.user.userId;
-    const createdAt = getCurrentTime();
+    const post = await Post.findOne({ slug }).populate("userId");
 
-    const newComment = new Comment({
-      userId,
-      postId,
-      content,
-      parentCommentId,
-      createdAt,
-    });
-
-    const savedComment = await newComment.save();
-
-    return res.status(200).json(savedComment);
-  } catch (error) {
-    console.error("Error creating new comment:", error);
-    return res
-      .status(500)
-      .json({ error: "An error occurred while creating new comment" });
-  }
-}
-
-async function updateComment(req, res) {
-  const { commentId } = req.params;
-  const { content } = req.body;
-  const updatedAt = getCurrentTime();
-
-  try {
-    const updatedComment = await Comment.findByIdAndUpdate(
-      commentId,
-      { content, updatedAt },
-      { new: true }
-    );
-
-    if (!updatedComment) {
-      return res.status(404).json({ message: "Comment not found." });
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
     }
 
-    res.json({
-      message: "Comment updated successfully.",
-      data: updatedComment,
-    });
+    return res.status(200).json(post);
   } catch (error) {
-    console.error("Error updating comment:", error);
-    res
+    console.error("Error fetching post by slug:", error);
+    return res
       .status(500)
-      .json({ error: "An error occurred while updating the comment." });
-  }
-}
-
-async function deleteComment(req, res) {
-  const { commentId } = req.params;
-
-  try {
-    const deletedComment = await Comment.findByIdAndDelete(commentId);
-
-    if (!deletedComment) {
-      return res.status(404).json({ message: "Comment not found." });
-    }
-
-    res.json({
-      message: "Comment deleted successfully.",
-      data: deletedComment,
-    });
-  } catch (error) {
-    console.error("Error deleting comment:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while deleting the comment." });
+      .json({ error: "An error occurred while fetching the post" });
   }
 }
 
@@ -225,8 +152,5 @@ module.exports = {
   getPostByUser,
   updatePost,
   deletePost,
-  getAllComments,
-  createNewComment,
-  updateComment,
-  deleteComment,
+  getPostBySlug,
 };

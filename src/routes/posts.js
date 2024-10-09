@@ -5,6 +5,7 @@ const authMiddleware = require("../middlewares/authMiddleware");
 
 //post
 router.get("/get-all-post", postController.getAllPost);
+router.get("/get-post-by-slug/:slug", postController.getPostBySlug);
 router.get(
   "/get-post-by-user/:userId",
   authMiddleware.authenticateToken,
@@ -26,22 +27,4 @@ router.delete(
   postController.deletePost
 );
 
-//comments
-
-router.get("/get-all-comment/:postId", postController.getAllComments);
-router.post(
-  "/create-new-comment/:postId",
-  authMiddleware.authenticateToken,
-  postController.createNewComment
-);
-router.put(
-  "/update-comment/:commentId",
-  authMiddleware.authenticateToken,
-  postController.updateComment
-);
-router.delete(
-  "/delete-comment/:commentId",
-  authMiddleware.authenticateToken,
-  postController.deleteComment
-);
 module.exports = router;
