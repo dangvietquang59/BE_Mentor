@@ -12,6 +12,7 @@ const uploadRoutes = require("./routes/upload");
 const technologiesRoutues = require("./routes/technologies");
 const chatGroupRoutes = require("./routes/chat");
 const jobTitleRoutes = require("./routes/jobtitle");
+const commentRoutes = require("./routes/comment");
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -51,6 +52,7 @@ app.use("/technologies", technologiesRoutues);
 app.use("/chat-groups", chatGroupRoutes);
 app.use("/messages", messageRoutes);
 app.use("/jobTitle", jobTitleRoutes);
+app.use("/comments", commentRoutes);
 app.use("/uploads", express.static("uploads"));
 
 cron.schedule("*/1 * * * *", () => {

@@ -9,6 +9,7 @@ router.get(
   authMiddleware.authenticateToken,
   userController.getProfile
 );
+router.get("/user/:userId", userController.getProfile);
 router.put(
   "/update-profile/:userId",
   authMiddleware.authenticateToken,

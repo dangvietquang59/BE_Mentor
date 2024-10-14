@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
       },
     ],
     coin: { type: Number, default: 0 },
-    pricePerHour: { type: Number },
+    pricePerHour: { type: Number, default: 0 },
   },
   {
     timestamps: true,

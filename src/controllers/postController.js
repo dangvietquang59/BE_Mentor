@@ -1,5 +1,4 @@
 const Post = require("../models/Posts");
-const Comment = require("../models/Comments");
 const slugify = require("slugify");
 const moment = require("moment-timezone");
 
