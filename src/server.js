@@ -2,6 +2,8 @@ const express = require("express");
 const http = require("http");
 const socketio = require("socket.io");
 const db = require("./config/db");
+const { ExpressPeerServer } = require("peer");
+
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
 const postRoutes = require("./routes/posts");
@@ -16,7 +18,6 @@ const commentRoutes = require("./routes/comment");
 
 const cron = require("node-cron");
 const cors = require("cors");
-
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server, {
@@ -25,6 +26,18 @@ const io = socketio(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
+});
+const peerServer = ExpressPeerServer(server, {
+  debug: true,
+});
+app.use("/peerjs", peerServer);
+
+peerServer.on("connection", (client) => {
+  console.log("Client connected: " + client.getId());
+});
+
+peerServer.on("disconnect", (client) => {
+  console.log("Client disconnected: " + client.getId());
 });
 const messageRoutes = require("./routes/message")(io);
 
@@ -59,40 +72,29 @@ cron.schedule("*/1 * * * *", () => {
   // console.log("Running a task every 1 minute");
 });
 
-io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
-  //chat
-  socket.on("joinRoom", (groupId) => {
-    socket.join(groupId);
-    console.log(`User joined room: ${groupId} id:${socket.id}`);
-  });
+//for chat realtime
+require("./utils/SocketMessager.js")(io);
+// io.on("connection", (socket) => {
+//   console.log(`User connected: ${socket.id}`);
+//   socket.on("joinRoom", (groupId) => {
+//     socket.join(groupId);
+//     console.log(`User joined room: ${groupId} id:${socket.id}`);
+//   });
 
-  socket.on("sendMessage", (messageData) => {
-    const { groupId, message } = messageData;
+//   socket.on("sendMessage", (messageData) => {
+//     const { groupId, message } = messageData;
 
-    console.log("messageData", messageData);
-    socket.to(groupId).emit("newMessage", message);
-    console.log(`Message sent to group ${groupId}: ${message} id:${socket.id}`);
-  });
-  //web rtc
-  socket.on("offer", (data) => {
-    // Phát offer từ một peer đến peer khác
-    socket.to(data.target).emit("offer", data);
-  });
+//     console.log("messageData", messageData);
+//     socket.to(groupId).emit("newMessage", message);
+//     console.log(`Message sent to group ${groupId}: ${message} id:${socket.id}`);
+//   });
 
-  socket.on("answer", (data) => {
-    // Phát answer từ một peer đến peer khác
-    socket.to(data.target).emit("answer", data);
-  });
+//   //webRTC
 
-  socket.on("ice-candidate", (data) => {
-    // Phát ICE candidate từ một peer đến peer khác
-    socket.to(data.target).emit("ice-candidate", data);
-  });
-  socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
-  });
-});
+//   socket.on("disconnect", () => {
+//     console.log(`User disconnected: ${socket.id}`);
+//   });
+// });
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
