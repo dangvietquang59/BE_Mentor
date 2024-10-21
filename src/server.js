@@ -73,28 +73,7 @@ cron.schedule("*/1 * * * *", () => {
 });
 
 //for chat realtime
-require("./utils/SocketMessager.js")(io);
-// io.on("connection", (socket) => {
-//   console.log(`User connected: ${socket.id}`);
-//   socket.on("joinRoom", (groupId) => {
-//     socket.join(groupId);
-//     console.log(`User joined room: ${groupId} id:${socket.id}`);
-//   });
-
-//   socket.on("sendMessage", (messageData) => {
-//     const { groupId, message } = messageData;
-
-//     console.log("messageData", messageData);
-//     socket.to(groupId).emit("newMessage", message);
-//     console.log(`Message sent to group ${groupId}: ${message} id:${socket.id}`);
-//   });
-
-//   //webRTC
-
-//   socket.on("disconnect", () => {
-//     console.log(`User disconnected: ${socket.id}`);
-//   });
-// });
+require("./utils/Socket.js")(io);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

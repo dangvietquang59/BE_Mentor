@@ -6,19 +6,27 @@ const mongoose = require("mongoose");
 // Lấy tất cả người dùng với phân trang và lọc theo vai trò
 async function getAllUsers(req, res) {
   try {
-    const { role, page = 1, experiencesYear, jobtitle, technology } = req.query;
+    const {
+      role,
+      page = 1,
+      experiencesYear,
+      jobtitle,
+      technology,
+      search,
+      rating,
+    } = req.query;
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    // Khởi tạo bộ lọc
+    // Initialize filters
     const filter = {};
 
-    // Kiểm tra và thêm điều kiện cho role
+    // Role filter
     if (role) {
       filter.role = role;
     }
 
-    // Kiểm tra và thêm điều kiện cho năm kinh nghiệm
+    // Filter by experience years
     if (experiencesYear) {
       filter.technologies = {
         ...filter.technologies,
@@ -28,17 +36,17 @@ async function getAllUsers(req, res) {
       };
     }
 
-    // Kiểm tra và thêm điều kiện cho jobtitle
+    // Filter by job title
     if (jobtitle) {
       const jobTitlesArray = Array.isArray(jobtitle)
         ? jobtitle
         : jobtitle.split(",").map((id) => id.trim());
       filter.bio = {
         $in: jobTitlesArray.map((id) => new mongoose.Types.ObjectId(id)),
-      }; // Sử dụng $in để tìm nhiều jobtitle
+      };
     }
 
-    // Kiểm tra và thêm điều kiện cho technology
+    // Filter by technology
     if (technology) {
       const technologiesArray = Array.isArray(technology)
         ? technology
@@ -53,14 +61,31 @@ async function getAllUsers(req, res) {
       };
     }
 
-    // Truy vấn người dùng với bộ lọc đã thiết lập
+    // Search by user name
+    if (search) {
+      filter.fullName = { $regex: search, $options: "i" };
+    }
+
+    // Sorting logic
+    const sort = {};
+    if (rating) {
+      sort.rating = rating === "ASC" ? 1 : -1;
+    }
+
+    // Sort by name (ASC/DESC)
+    if (req.query.sortByName) {
+      sort.name = req.query.sortByName === "ASC" ? 1 : -1;
+    }
+
+    // Query users with filters
     const allUsers = await User.find(filter)
-      .select("-password") // Loại bỏ trường password
-      .populate("bio") // Duyệt sinh trường bio
+      .select("-password")
+      .populate("bio")
       .populate({
-        path: "technologies.technology", // Duyệt sinh công nghệ
-        model: "Technologies", // Chỉ định mô hình để duyệt sinh
+        path: "technologies.technology",
+        model: "Technologies",
       })
+      .sort(sort) // Apply sorting
       .skip(skip)
       .limit(limit)
       .lean();
@@ -75,8 +100,8 @@ async function getAllUsers(req, res) {
       totalUsers,
     });
   } catch (error) {
-    console.error("Lỗi khi lấy người dùng:", error);
-    return res.status(500).json({ error: "Đã xảy ra lỗi khi lấy người dùng." });
+    console.error("Error fetching users:", error);
+    return res.status(500).json({ error: "Error fetching users." });
   }
 }
 
