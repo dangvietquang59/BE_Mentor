@@ -80,17 +80,38 @@ async function updateComment(req, res) {
   }
 }
 
+async function deleteChildrenComments(commentId) {
+  // Tìm tất cả các comment con có parent là commentId
+  const children = await Comment.find({ parent: commentId });
+
+  // Duyệt qua từng comment con và xóa các comment con của nó (nếu có)
+  for (const child of children) {
+    await deleteChildrenComments(child._id); // Gọi đệ quy để xóa các comment con của nó
+    await Comment.findByIdAndDelete(child._id); // Xóa chính comment con đó
+  }
+}
+
+// Cập nhật hàm deleteComment
 async function deleteComment(req, res) {
   try {
     const { commentId } = req.params;
 
-    const deletedComment = await Comment.findByIdAndDelete(commentId);
+    // Tìm comment muốn xóa
+    const commentToDelete = await Comment.findById(commentId);
 
-    if (!deletedComment) {
+    if (!commentToDelete) {
       return res.status(404).json({ message: "Comment not found" });
     }
 
-    res.status(200).json({ success: true, message: "Comment deleted" });
+    // Xóa tất cả các comment con đệ quy nếu có
+    await deleteChildrenComments(commentId);
+
+    // Xóa chính comment cha hoặc comment con
+    await Comment.findByIdAndDelete(commentId);
+
+    res
+      .status(200)
+      .json({ success: true, message: "Comment and related replies deleted" });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
