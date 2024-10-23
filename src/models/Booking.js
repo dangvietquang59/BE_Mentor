@@ -17,7 +17,12 @@ const bookingSchema = new mongoose.Schema(
       ref: "FreeTimeDetail",
       require: true,
     },
-    status: { type: String, require: true, default: "Pending" },
+    status: {
+      type: String,
+      require: true,
+      enum: ["Pending", "Accepted", "Refused"],
+      default: "Pending",
+    },
   },
   {
     timestamps: true,

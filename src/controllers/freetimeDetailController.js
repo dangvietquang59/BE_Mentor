@@ -82,12 +82,16 @@ const updateFreeTimeDetail = async (req, res) => {
 const deleteFreeTimeDetail = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("Attempting to delete FreeTimeDetail with ID:", id);
 
-    const deletedFreeTimeDetail = await FreeTimeDetail.findByIdAndDelete(id);
-
-    if (!deletedFreeTimeDetail) {
+    // Check if the document exists before attempting to delete
+    const existingDetail = await FreeTimeDetail.findById(id);
+    if (!existingDetail) {
       return res.status(404).json({ error: "FreeTimeDetail not found" });
     }
+
+    // Proceed to delete if it exists
+    const deletedFreeTimeDetail = await FreeTimeDetail.findByIdAndDelete(id);
 
     res.status(200).json({ message: "FreeTimeDetail deleted successfully" });
   } catch (error) {
