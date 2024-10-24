@@ -1,5 +1,8 @@
 const Comment = require("../models/Comment"); // Import Comment model
 const mongoose = require("mongoose");
+const Notification = require("../models/Notification");
+const Post = require("../models/Posts");
+const User = require("../models/User");
 
 async function createComment(req, res) {
   try {
@@ -9,6 +12,12 @@ async function createComment(req, res) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const authorId = post.userId;
     const newComment = new Comment({
       userId: new mongoose.Types.ObjectId(userId),
       postId: new mongoose.Types.ObjectId(postId),
@@ -16,7 +25,22 @@ async function createComment(req, res) {
       content,
     });
 
-    await newComment.save();
+    const sender = await User.findById(userId);
+    if (!sender) {
+      return res.status(404).json({ message: "Mentee not found" });
+    }
+
+    const newNotification = new Notification({
+      user: authorId,
+      sender: userId,
+      content: `You have a new comment on your post from ${sender?.fullName}`,
+      entityType: "Comment",
+      entityId: postId,
+    });
+
+    // Save the comment and notification
+    await Promise.all([newComment.save(), newNotification.save()]);
+
     res.status(201).json({ success: true, comment: newComment });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

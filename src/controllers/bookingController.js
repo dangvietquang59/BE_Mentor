@@ -1,18 +1,18 @@
 const Booking = require("../models/Booking");
 const FreeTimeDetail = require("../models/FreetimeDetail");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
+const mongoose = require("mongoose");
 
-// Create a new booking
 async function createBooking(req, res) {
   try {
     const { menteeId, mentorId, freetimeDetailId } = req.body;
 
-    // Check if FreeTimeDetail exists
     const freeTimeDetail = await FreeTimeDetail.findById(freetimeDetailId);
     if (!freeTimeDetail) {
       return res.status(404).json({ message: "FreeTimeDetail not found" });
     }
 
-    // Check if a booking already exists for this menteeId, mentorId, and freetimeDetailId
     const existingBooking = await Booking.findOne({
       menteeId,
       mentorId,
@@ -24,9 +24,22 @@ async function createBooking(req, res) {
         .json({ message: "Booking already exists for this detail" });
     }
 
-    // Create and save the booking
     const newBooking = new Booking({ menteeId, mentorId, freetimeDetailId });
     await newBooking.save();
+
+    const mentee = await User.findById(menteeId);
+    if (!mentee) {
+      return res.status(404).json({ message: "Mentee not found" });
+    }
+
+    const newNotification = new Notification({
+      user: mentorId,
+      sender: menteeId,
+      content: `You have a new booking from mentee ${mentee.fullName}`,
+      entityType: "Booking",
+      entityId: newBooking._id,
+    });
+    await newNotification.save();
 
     res.status(201).json(newBooking);
   } catch (error) {
@@ -34,7 +47,6 @@ async function createBooking(req, res) {
   }
 }
 
-// Get all bookings
 async function getAllBookings(req, res) {
   try {
     const bookings = await Booking.find()
@@ -47,7 +59,6 @@ async function getAllBookings(req, res) {
   }
 }
 
-// Get a specific booking by ID
 async function getBookingById(req, res) {
   try {
     const { id } = req.params;
@@ -65,19 +76,27 @@ async function getBookingById(req, res) {
     res.status(500).json({ message: error.message });
   }
 }
-
-// Get bookings by menteeId or mentorId (get by userId)
 async function getBookingsByUserId(req, res) {
   try {
     const { userId } = req.params;
 
-    const role = req.query.role;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid userId format" });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const role = user.role;
 
     let filter = {};
-    if (role === "mentee") {
-      filter = { menteeId: userId };
-    } else if (role === "mentor") {
-      filter = { mentorId: userId };
+    if (role === "Mentee") {
+      filter = { menteeId: new mongoose.Types.ObjectId(userId) };
+    } else if (role === "Mentor") {
+      filter = { mentorId: new mongoose.Types.ObjectId(userId) };
     } else {
       return res.status(400).json({ message: "Invalid role provided" });
     }
@@ -99,7 +118,6 @@ async function getBookingsByUserId(req, res) {
   }
 }
 
-// Update a booking by ID
 async function updateBooking(req, res) {
   try {
     const { id } = req.params;
@@ -121,7 +139,6 @@ async function updateBooking(req, res) {
   }
 }
 
-// Delete a booking by ID
 async function deleteBooking(req, res) {
   try {
     const { id } = req.params;
