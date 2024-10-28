@@ -2,25 +2,22 @@ const mongoose = require("mongoose");
 
 const bookingSchema = new mongoose.Schema(
   {
-    menteeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      require: true,
-    },
-    mentorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      require: true,
-    },
+    participants: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+    ],
     freetimeDetailId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "FreeTimeDetail",
-      require: true,
+      required: true,
     },
     status: {
       type: String,
-      require: true,
-      enum: ["Pending", "Accepted", "Refused"],
+      required: true,
+      enum: ["Pending", "Accepted", "Refused", "Canceled"],
       default: "Pending",
     },
   },

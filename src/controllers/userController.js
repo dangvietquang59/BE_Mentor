@@ -228,10 +228,65 @@ async function updateProfileImageUrl(req, res) {
     });
   }
 }
+async function updateRating(req, res) {
+  try {
+    const { userId } = req.params;
+    const { newRating } = req.body;
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const ratingNumber = parseFloat(newRating);
+
+    if (isNaN(ratingNumber) || ratingNumber < 0 || ratingNumber > 5) {
+      return res
+        .status(400)
+        .json({ error: "newRating must be a number between 0 and 5" });
+    }
+
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    let currentRating = parseFloat(existingUser.rating) || 0;
+    let updatedRating;
+
+    if (currentRating === 0) {
+      updatedRating = ratingNumber;
+    } else {
+      updatedRating = (currentRating + ratingNumber) / 2;
+    }
+
+    updatedRating = Math.min(updatedRating, 5).toFixed(1);
+
+    const updatedProfile = await User.findByIdAndUpdate(
+      userId,
+      {
+        rating: updatedRating,
+        ratingCount: (existingUser.ratingCount || 0) + 1,
+      },
+      { new: true }
+    );
+
+    if (!updatedProfile) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json(updatedProfile);
+  } catch (error) {
+    console.error("Error updating rating:", error);
+    return res.status(500).json({
+      error: "An error occurred while updating the rating.",
+    });
+  }
+}
 
 module.exports = {
   getAllUsers,
   getProfile,
   updateProfile,
   updateProfileImageUrl,
+  updateRating,
 };

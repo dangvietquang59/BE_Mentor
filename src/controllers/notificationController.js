@@ -30,9 +30,9 @@ const getNotificationsByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const notifications = await Notification.find({ user: userId }).populate(
-      "user sender"
-    );
+    const notifications = await Notification.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .populate("user sender");
 
     const unreadCount = await Notification.countDocuments({
       user: userId,
@@ -44,12 +44,10 @@ const getNotificationsByUserId = async (req, res) => {
       unreadCount,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Failed to fetch notifications for user",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to fetch notifications for user",
+      error: error.message,
+    });
   }
 };
 

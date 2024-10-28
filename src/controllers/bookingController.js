@@ -4,42 +4,51 @@ const Notification = require("../models/Notification");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 
+// Create a new booking
 async function createBooking(req, res) {
   try {
-    const { menteeId, mentorId, freetimeDetailId } = req.body;
-
+    const { participants, freetimeDetailId } = req.body;
+    // Kiểm tra FreeTimeDetail
     const freeTimeDetail = await FreeTimeDetail.findById(freetimeDetailId);
     if (!freeTimeDetail) {
       return res.status(404).json({ message: "FreeTimeDetail not found" });
     }
 
+    // Kiểm tra booking đã tồn tại
     const existingBooking = await Booking.findOne({
-      menteeId,
-      mentorId,
+      participants: { $all: participants },
       freetimeDetailId,
     });
+
     if (existingBooking) {
       return res
         .status(400)
         .json({ message: "Booking already exists for this detail" });
     }
 
-    const newBooking = new Booking({ menteeId, mentorId, freetimeDetailId });
+    // Chuyển đổi participants sang ObjectId
+    const participantsObjectIds = participants.map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+    // Tạo booking mới
+    const newBooking = new Booking({
+      participants: participantsObjectIds,
+      freetimeDetailId,
+    });
     await newBooking.save();
 
-    const mentee = await User.findById(menteeId);
-    if (!mentee) {
-      return res.status(404).json({ message: "Mentee not found" });
+    // Thông báo cho từng participant
+    const user = await User.findById(req.user.userId);
+    if (user) {
+      const newNotification = new Notification({
+        user: participants[0],
+        sender: req.user.userId,
+        content: `You have a new booking from ${user?.fullName}`,
+        entityType: "Booking",
+        entityId: newBooking._id,
+      });
+      await newNotification.save();
     }
-
-    const newNotification = new Notification({
-      user: mentorId,
-      sender: menteeId,
-      content: `You have a new booking from mentee ${mentee.fullName}`,
-      entityType: "Booking",
-      entityId: newBooking._id,
-    });
-    await newNotification.save();
 
     res.status(201).json(newBooking);
   } catch (error) {
@@ -47,11 +56,11 @@ async function createBooking(req, res) {
   }
 }
 
+// Get all bookings
 async function getAllBookings(req, res) {
   try {
     const bookings = await Booking.find()
-      .populate("menteeId")
-      .populate("mentorId")
+      .populate("participants")
       .populate("freetimeDetailId");
     res.status(200).json(bookings);
   } catch (error) {
@@ -59,12 +68,12 @@ async function getAllBookings(req, res) {
   }
 }
 
+// Get booking by ID
 async function getBookingById(req, res) {
   try {
     const { id } = req.params;
     const booking = await Booking.findById(id)
-      .populate("menteeId")
-      .populate("mentorId")
+      .populate("participants")
       .populate("freetimeDetailId");
 
     if (!booking) {
@@ -76,34 +85,17 @@ async function getBookingById(req, res) {
     res.status(500).json({ message: error.message });
   }
 }
+
+// Get bookings by User ID
 async function getBookingsByUserId(req, res) {
   try {
     const { userId } = req.params;
-
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid userId format" });
     }
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const role = user.role;
-
-    let filter = {};
-    if (role === "Mentee") {
-      filter = { menteeId: new mongoose.Types.ObjectId(userId) };
-    } else if (role === "Mentor") {
-      filter = { mentorId: new mongoose.Types.ObjectId(userId) };
-    } else {
-      return res.status(400).json({ message: "Invalid role provided" });
-    }
-
-    const bookings = await Booking.find(filter)
-      .populate("menteeId")
-      .populate("mentorId")
+    const userIdObj = new mongoose.Types.ObjectId(userId);
+    const bookings = await Booking.find({ participants: userIdObj })
+      .populate("participants")
       .populate("freetimeDetailId");
 
     if (bookings.length === 0) {
@@ -118,27 +110,57 @@ async function getBookingsByUserId(req, res) {
   }
 }
 
+// Update booking status
 async function updateBooking(req, res) {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
+    // Cập nhật booking
     const updatedBooking = await Booking.findByIdAndUpdate(
       id,
       { status },
       { new: true }
     );
 
+    // Kiểm tra nếu không tìm thấy booking
     if (!updatedBooking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Tạo thông báo
+    let text = "";
+    if (status === "Accepted") {
+      text = "Your reservation has been confirmed.";
+    } else if (status === "Refused") {
+      text = "Your reservation has been refused.";
+    } else {
+      text = "Your reservation has been canceled.";
+    }
+
+    // Thông báo cho người dùng tham gia
+    const userIdToNotify = updatedBooking.participants[0];
+    const user = await User.findById(userIdToNotify);
+
+    if (user) {
+      const newNotification = new Notification({
+        user: userIdToNotify,
+        sender: req.user.userId,
+        content: text,
+        entityType: "Booking",
+        entityId: updatedBooking._id,
+      });
+      await newNotification.save();
+    }
+
+    // Gửi phản hồi về client
     res.status(200).json(updatedBooking);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 }
 
+// Delete booking
 async function deleteBooking(req, res) {
   try {
     const { id } = req.params;

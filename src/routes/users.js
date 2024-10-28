@@ -20,4 +20,9 @@ router.put(
   authMiddleware.authenticateToken,
   userController.updateProfileImageUrl
 );
+router.put(
+  "/update-rating/:userId",
+  authMiddleware.authenticateToken,
+  userController.updateRating
+);
 module.exports = router;

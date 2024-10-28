@@ -16,6 +16,7 @@ const chatGroupRoutes = require("./routes/chat");
 const jobTitleRoutes = require("./routes/jobtitle");
 const commentRoutes = require("./routes/comment");
 const notificationRoutes = require("./routes/notification");
+const reviewRoutes = require("./routes/review");
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -68,6 +69,7 @@ app.use("/messages", messageRoutes);
 app.use("/jobTitle", jobTitleRoutes);
 app.use("/comments", commentRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/reviews", reviewRoutes);
 app.use("/uploads", express.static("uploads"));
 
 cron.schedule("*/1 * * * *", () => {

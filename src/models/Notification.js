@@ -22,7 +22,7 @@ const notificationSchema = new mongoose.Schema(
       enum: ["Booking", "Blog", "Comment"],
     },
     entityId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       required: true,
     },
     isRead: {
