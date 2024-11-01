@@ -17,6 +17,7 @@ const jobTitleRoutes = require("./routes/jobtitle");
 const commentRoutes = require("./routes/comment");
 const notificationRoutes = require("./routes/notification");
 const reviewRoutes = require("./routes/review");
+const paymentRoutes = require("./routes/payment");
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -49,7 +50,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(
   cors({
-    origin: ["https://mentor-steel.vercel.app", "http://localhost:8080"],
+    origin: [
+      "https://mentor-steel.vercel.app",
+      "http://localhost:8080",
+      process.env.VNP_URL,
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -70,6 +75,7 @@ app.use("/jobTitle", jobTitleRoutes);
 app.use("/comments", commentRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/reviews", reviewRoutes);
+app.use("/payment", paymentRoutes);
 app.use("/uploads", express.static("uploads"));
 
 cron.schedule("*/1 * * * *", () => {

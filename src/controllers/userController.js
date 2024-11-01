@@ -138,7 +138,7 @@ async function getProfile(req, res) {
 async function updateProfile(req, res) {
   try {
     const { userId } = req.params;
-    const { fullName, role, bio, experience, rating } = req.body;
+    const { fullName, role, bio, experience, rating, pricePerHour } = req.body;
 
     if (!mongoose.isValidObjectId(userId)) {
       return res.status(400).json({ message: "Invalid user ID" });
@@ -178,6 +178,8 @@ async function updateProfile(req, res) {
       role: role || existingUser.role,
       bio: bio || existingUser.bio,
       rating: rating || existingUser.rating,
+      pricePerHour:
+        pricePerHour !== undefined ? pricePerHour : existingUser.pricePerHour,
       technologies: formattedExperience.length
         ? formattedExperience
         : existingUser.technologies,
