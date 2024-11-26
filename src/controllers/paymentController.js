@@ -1,5 +1,7 @@
 require("dotenv").config();
 const moment = require("moment");
+const crypto = require("crypto");
+const querystring = require("qs");
 
 function sortObject(obj) {
   let sorted = {};
@@ -16,6 +18,7 @@ function sortObject(obj) {
   }
   return sorted;
 }
+
 const createPayment = (req, res) => {
   process.env.TZ = "Asia/Ho_Chi_Minh";
 
@@ -34,37 +37,54 @@ const createPayment = (req, res) => {
   let returnUrl = process.env.VNP_RETURN_URL;
   let orderId = moment(date).format("DDHHmmss");
   let amount = req.body.amount;
+  let locale = req.body.language || "vn";
 
-  let locale = req.body.language;
-  if (locale === null || locale === "") {
-    locale = "vn";
-  }
-  let currCode = "VND";
-  let vnp_Params = {};
-  vnp_Params["vnp_Version"] = "2.1.0";
-  vnp_Params["vnp_Command"] = "pay";
-  vnp_Params["vnp_TmnCode"] = tmnCode;
-  vnp_Params["vnp_Locale"] = locale || "vn";
-  vnp_Params["vnp_CurrCode"] = currCode;
-  vnp_Params["vnp_TxnRef"] = orderId;
-  vnp_Params["vnp_OrderInfo"] = "Thanh toan cho ma GD:" + orderId;
-  vnp_Params["vnp_OrderType"] = "other";
-  vnp_Params["vnp_Amount"] = amount * 100;
-  vnp_Params["vnp_ReturnUrl"] = returnUrl;
-  vnp_Params["vnp_IpAddr"] = ipAddr;
-  vnp_Params["vnp_CreateDate"] = createDate;
+  let vnp_Params = {
+    vnp_Version: "2.1.0",
+    vnp_Command: "pay",
+    vnp_TmnCode: tmnCode,
+    vnp_Locale: locale,
+    vnp_CurrCode: "VND",
+    vnp_TxnRef: orderId,
+    vnp_OrderInfo: "Payment for order ID: " + orderId,
+    vnp_OrderType: "other",
+    vnp_Amount: amount * 100,
+    vnp_ReturnUrl: returnUrl,
+    vnp_IpAddr: ipAddr,
+    vnp_CreateDate: createDate,
+  };
 
   vnp_Params = sortObject(vnp_Params);
 
-  let querystring = require("qs");
   let signData = querystring.stringify(vnp_Params, { encode: false });
-  let crypto = require("crypto");
   let hmac = crypto.createHmac("sha512", secretKey);
-  let signed = hmac.update(new Buffer(signData, "utf-8")).digest("hex");
+  let signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
   vnp_Params["vnp_SecureHash"] = signed;
   vnpUrl += "?" + querystring.stringify(vnp_Params, { encode: false });
 
   res.json({ vnpUrl });
 };
 
-module.exports = { createPayment };
+const paymentResponse = (req, res) => {
+  const params = req.query;
+  const secureHash = params["vnp_SecureHash"];
+  delete params["vnp_SecureHash"];
+
+  const sortedParams = sortObject(params);
+  const signData = querystring.stringify(sortedParams, { encode: false });
+
+  const hmac = crypto.createHmac("sha512", process.env.VNP_HASH_SECRET);
+  const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
+
+  if (secureHash === signed) {
+    if (params["vnp_ResponseCode"] === "00") {
+      res.redirect(process.env.VNP_RETURN_URL_SUCCESS);
+    } else {
+      res.redirect(process.env.VNP_RETURN_URL_FAILED);
+    }
+  } else {
+    res.status(403).send("Invalid signature");
+  }
+};
+
+module.exports = { createPayment, paymentResponse };

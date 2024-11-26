@@ -17,19 +17,32 @@ async function getFreeTime(req, res) {
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    // Tìm kiếm FreeTime cho userId
-    const freetime = await FreeTime.find({ userId })
-      .sort({ freeDate: 1 }) // Sử dụng đúng trường là freeDate
+    // Lấy ngày hôm nay và đặt thời gian về đầu ngày (00:00) để so sánh
+    const today = moment().startOf("day").toDate();
+
+    // Tìm kiếm FreeTime cho userId, từ hôm nay trở đi
+    const freetime = await FreeTime.find({
+      userId,
+      freeDate: { $gte: today }, // Lọc các bản ghi có freeDate lớn hơn hoặc bằng hôm nay
+    })
+      .sort({ freeDate: 1 }) // Sắp xếp theo freeDate tăng dần
       .skip(skip)
       .limit(limit)
-      .populate("freeTimeDetail"); // Đảm bảo rằng trường này là đúng
+      .populate("freeTimeDetail"); // Lấy toàn bộ freeTimeDetail để lọc tiếp theo
 
-    const totalRecords = await FreeTime.countDocuments({ userId });
+    const totalRecords = await FreeTime.countDocuments({
+      userId,
+      freeDate: { $gte: today },
+    });
 
-    // Chuyển đổi tất cả thời gian sang múi giờ Việt Nam
+    // Chuyển đổi tất cả thời gian sang múi giờ Việt Nam và lọc freeTimeDetail có trạng thái Pending
     const freetimeVietnam = freetime.map((ft) => ({
       ...ft._doc,
       freeDate: convertToVietnamTime(ft.freeDate),
+      // Chỉ giữ lại các freeTimeDetail có status là "Pending"
+      freeTimeDetail: ft.freeTimeDetail.filter(
+        (detail) => detail.status === "Pending"
+      ),
     }));
 
     return res.status(200).json({
