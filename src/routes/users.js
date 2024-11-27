@@ -21,4 +21,5 @@ router.put(
   authMiddleware.authenticateToken,
   userController.updateRating
 );
+router.get("/me", authMiddleware.authenticateToken, userController.getMe);
 module.exports = router;

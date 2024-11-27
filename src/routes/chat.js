@@ -8,4 +8,5 @@ router.get("/:id", chatGroupController.getChatGroupById);
 router.put("/:id", chatGroupController.updateChatGroup);
 router.delete("/:id", chatGroupController.deleteChatGroup);
 router.get("/user/:userId", chatGroupController.getChatGroupsByUserId);
+router.get("/user/search", chatGroupController.searchChatGroups);
 module.exports = router;

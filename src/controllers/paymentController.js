@@ -2,6 +2,16 @@ require("dotenv").config();
 const moment = require("moment");
 const crypto = require("crypto");
 const querystring = require("qs");
+const Transaction = require("../models/Transactions");
+const User = require("../models/User");
+
+async function updateUserBalance(userId, amount) {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+  user.coin += amount;
+  if (user.coin < 0) throw new Error("Insufficient balance");
+  await user.save();
+}
 
 function sortObject(obj) {
   let sorted = {};
@@ -21,7 +31,7 @@ function sortObject(obj) {
 
 const createPayment = (req, res) => {
   process.env.TZ = "Asia/Ho_Chi_Minh";
-
+  const userId = req.user.userId;
   let date = new Date();
   let createDate = moment(date).format("YYYYMMDDHHmmss");
 
@@ -46,7 +56,7 @@ const createPayment = (req, res) => {
     vnp_Locale: locale,
     vnp_CurrCode: "VND",
     vnp_TxnRef: orderId,
-    vnp_OrderInfo: "Payment for order ID: " + orderId,
+    vnp_OrderInfo: "Payment for order ID: " + userId,
     vnp_OrderType: "other",
     vnp_Amount: amount * 100,
     vnp_ReturnUrl: returnUrl,
@@ -65,7 +75,7 @@ const createPayment = (req, res) => {
   res.json({ vnpUrl });
 };
 
-const paymentResponse = (req, res) => {
+const paymentResponse = async (req, res) => {
   const params = req.query;
   const secureHash = params["vnp_SecureHash"];
   delete params["vnp_SecureHash"];
@@ -78,7 +88,28 @@ const paymentResponse = (req, res) => {
 
   if (secureHash === signed) {
     if (params["vnp_ResponseCode"] === "00") {
-      res.redirect(process.env.VNP_RETURN_URL_SUCCESS);
+      // Xử lý giao dịch thành công
+      const userId = params["vnp_OrderInfo"].split(": ")[1];
+      const amount = parseInt(params["vnp_Amount"]) / 100;
+
+      try {
+        // Tạo giao dịch nạp tiền
+        const transaction = new Transaction({
+          userId,
+          type: "deposit",
+          amount,
+          status: "success", // Đánh dấu ngay là thành công
+        });
+
+        await transaction.save();
+
+        await updateUserBalance(userId, amount);
+
+        res.redirect(process.env.VNP_RETURN_URL_SUCCESS);
+      } catch (error) {
+        console.error("Failed to process transaction: ", error);
+        res.status(500).json({ error: error.message });
+      }
     } else {
       res.redirect(process.env.VNP_RETURN_URL_FAILED);
     }

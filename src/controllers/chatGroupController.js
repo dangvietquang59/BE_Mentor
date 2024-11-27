@@ -81,9 +81,51 @@ async function getChatGroupsByUserId(req, res) {
 
     res.status(200).json(groups);
   } catch (error) {
-    res.status(500).json({ error: "Không thể lấy nhóm chat" });
+    res.status(500).json({ error: "Không thể lấy nhóm chat" + error });
   }
 }
+async function searchChatGroups(req, res) {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim() === "") {
+      return res.status(400).json({ error: "Missing or empty search query" });
+    }
+
+    // Tìm nhóm theo tên hoặc thành viên
+    const groups = await ChatGroup.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } }, // Tìm theo tên nhóm
+        {
+          members: {
+            $in: await User.find({
+              fullName: { $regex: query, $options: "i" }, // Tìm theo tên thành viên
+            }).distinct("_id"), // Lấy danh sách ObjectId của các thành viên
+          },
+        },
+      ],
+    })
+      .populate({
+        path: "members", // Populate thông tin thành viên
+        select: "fullName email", // Lấy fullname và email
+      })
+      .lean();
+
+    if (!groups || groups.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Không tìm thấy nhóm chat nào phù hợp" });
+    }
+
+    res.status(200).json(groups);
+  } catch (error) {
+    console.error("Error searching chat groups:", error.message, error.stack);
+    res
+      .status(500)
+      .json({ error: "Không thể tìm kiếm nhóm chat", details: error.message });
+  }
+}
+
 module.exports = {
   createChatGroup,
   deleteChatGroup,
@@ -92,4 +134,5 @@ module.exports = {
   getAllChatGroups,
   createChatGroup,
   getChatGroupsByUserId,
+  searchChatGroups,
 };

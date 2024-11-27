@@ -284,11 +284,39 @@ async function updateRating(req, res) {
     });
   }
 }
+async function getMe(req, res) {
+  try {
+    const userId = req.user?.userId;
 
+    if (!userId || !mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: "Invalid or missing user ID" });
+    }
+
+    const user = await User.findById(userId)
+      .select("-password") // Không trả về mật khẩu
+      .populate({
+        path: "technologies.technology",
+        select: "name",
+      })
+      .populate("bio");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching user profile." });
+  }
+}
 module.exports = {
   getAllUsers,
   getProfile,
   updateProfile,
   updateProfileImageUrl,
   updateRating,
+  getMe,
 };
