@@ -3,17 +3,25 @@ const Technologies = require("../models/Technologies");
 // Get all technologies with pagination
 async function getAll(req, res) {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search = "" } = req.query;
 
     // Convert page and limit to numbers
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
 
-    const technologies = await Technologies.find()
-      .skip((pageNumber - 1) * limitNumber)
-      .limit(limitNumber);
+    // Create search query object
+    const searchQuery = search
+      ? { name: { $regex: search, $options: "i" } } // 'i' để tìm kiếm không phân biệt chữ hoa chữ thường
+      : {};
 
-    const totalItems = await Technologies.countDocuments();
+    // Fetch technologies with search and pagination
+    const technologies = await Technologies.find(searchQuery)
+      .skip((pageNumber - 1) * limitNumber)
+      .limit(limitNumber)
+      .sort({ createdAt: -1 });
+
+    // Get total number of items after filtering by search
+    const totalItems = await Technologies.countDocuments(searchQuery);
 
     return res.status(200).json({
       totalItems,

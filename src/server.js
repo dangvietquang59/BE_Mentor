@@ -18,6 +18,7 @@ const commentRoutes = require("./routes/comment");
 const notificationRoutes = require("./routes/notification");
 const reviewRoutes = require("./routes/review");
 const paymentRoutes = require("./routes/payment");
+const transactionsRoutes = require("./routes/transaction.js");
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -25,13 +26,18 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server, {
   cors: {
-    origin: ["https://mentor-steel.vercel.app", "http://localhost:8080"],
+    origin: [
+      "https://mentor-steel.vercel.app",
+      "http://localhost:8080",
+      "http://localhost:5173",
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 const peerServer = ExpressPeerServer(server, {
-  debug: true,
+  debug: 2,
+  port: 3001,
 });
 app.use("/peerjs", peerServer);
 
@@ -53,6 +59,7 @@ app.use(
     origin: [
       "https://mentor-steel.vercel.app",
       "http://localhost:8080",
+      "http://localhost:5173",
       process.env.VNP_URL,
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
@@ -76,6 +83,7 @@ app.use("/comments", commentRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/payment", paymentRoutes);
+app.use("/transactions", transactionsRoutes);
 app.use("/uploads", express.static("uploads"));
 
 cron.schedule("*/1 * * * *", () => {

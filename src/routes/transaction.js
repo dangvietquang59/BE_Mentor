@@ -8,7 +8,7 @@ router.post("/deposit", transactionController.deposit);
 // Rút tiền
 router.post("/withdraw", transactionController.withdraw);
 router.post("/transfer", transactionController.transfer);
-
+router.get("/user/:userId", transactionController.getTransactionsByUser);
 // Admin xử lý giao dịch
 router.post("/process", transactionController.processTransaction);
 

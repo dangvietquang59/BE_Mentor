@@ -11,19 +11,24 @@ function getCurrentTime() {
 
 async function getAllPost(req, res) {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search = "" } = req.query;
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
 
     const skip = (pageNumber - 1) * limitNumber;
 
-    const allPosts = await Post.find()
+    // Build the query object for filtering
+    const query = search
+      ? { title: { $regex: search, $options: "i" } } // Search case-insensitively in title
+      : {};
+
+    const allPosts = await Post.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber)
       .populate("userId");
 
-    const totalPosts = await Post.countDocuments();
+    const totalPosts = await Post.countDocuments(query);
     const totalPages = Math.ceil(totalPosts / limitNumber);
 
     return res.status(200).json({

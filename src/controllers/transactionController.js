@@ -79,7 +79,7 @@ exports.transfer = async (req, res) => {
       relatedUserId: recipientId,
       type: "transfer",
       amount,
-      status: "pending", // Chờ admin xử lý
+      status: "success", // Chờ admin xử lý
     });
 
     await transaction.save();
@@ -128,6 +128,24 @@ exports.processTransaction = async (req, res) => {
     await transaction.save();
 
     res.json({ message: `Transaction ${action}ed successfully`, transaction });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Lấy danh sách giao dịch của người dùng
+exports.getTransactionsByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Truy vấn tất cả các giao dịch của người dùng với userId hoặc relatedUserId
+    const transactions = await Transaction.find({
+      $or: [{ userId: userId }, { relatedUserId: userId }],
+    })
+      .populate("userId relatedUserId")
+      .sort({ createdAt: -1 });
+
+    res.json({ transactions });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
