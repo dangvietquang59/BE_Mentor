@@ -10,8 +10,77 @@ function toVietnamTime(date) {
 }
 
 // Tạo một tin nhắn mới
+// async function createMessage(req, res, io) {
+//   try {
+//     const { senderId, content, groupId } = req.body;
+
+//     const group = await ChatGroup.findById(groupId);
+//     const sender = await User.findById(senderId);
+
+//     // Kiểm tra xem nhóm và người gửi có tồn tại không
+//     if (!group || !sender) {
+//       return res.status(404).json({ error: "Group or sender not found" });
+//     }
+
+//     let attachments = [];
+//     if (req.files && req.files.length > 0) {
+//       attachments = await Promise.all(
+//         req.files.map(async (file) => {
+//           try {
+//             const result = await new Promise((resolve, reject) => {
+//               const stream = cloudinary.uploader.upload_stream(
+//                 (error, result) => {
+//                   if (error) reject(error);
+//                   else resolve(result);
+//                 }
+//               );
+//               stream.end(file.buffer);
+//             });
+//             if (result) {
+//               return {
+//                 filename: file.originalname,
+//                 url: result.secure_url,
+//                 mimetype: file.mimetype,
+//               };
+//             }
+//           } catch (error) {
+//             console.error("Error uploading file:", error);
+//             return null; // Trả về null nếu có lỗi
+//           }
+//         })
+//       );
+
+//       // Lọc các tệp không thành công (null)
+//       attachments = attachments.filter(Boolean);
+//     }
+
+//     // Tạo tin nhắn mới
+//     const message = new Message({
+//       sender: sender._id,
+//       content: content || "",
+//       group: group._id,
+//       attachments,
+//       timestamp: toVietnamTime(new Date()),
+//     });
+
+//     await message.save();
+
+//     // Phát sự kiện mới qua Socket.IO
+//     io.to(groupId).emit("newMessage", { message });
+
+//     res
+//       .status(200)
+//       .json({ message: "Message sent successfully", data: message });
+//   } catch (error) {
+//     console.error("Error in createMessage:", error);
+//     res.status(500).json({ error: "Unable to send message" });
+//   }
+// }
 async function createMessage(req, res, io) {
   try {
+    console.log("Starting to create message...");
+    // Log before each significant operation
+
     const { senderId, content, groupId } = req.body;
 
     const group = await ChatGroup.findById(groupId);
@@ -62,7 +131,13 @@ async function createMessage(req, res, io) {
       attachments,
       timestamp: toVietnamTime(new Date()),
     });
-
+    await ChatGroup.findByIdAndUpdate(groupId, {
+      latestMessage: {
+        sender: sender._id,
+        content: content || "",
+        timestamp: message.timestamp,
+      },
+    });
     await message.save();
 
     // Phát sự kiện mới qua Socket.IO
@@ -76,7 +151,6 @@ async function createMessage(req, res, io) {
     res.status(500).json({ error: "Unable to send message" });
   }
 }
-
 // Lấy tất cả tin nhắn cho một nhóm cụ thể
 async function getMessagesByGroup(req, res) {
   try {

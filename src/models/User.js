@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema(
     ],
     coin: { type: Number, default: 0 },
     pricePerHour: { type: Number, default: 0 },
-    isAdmin: { type: Boolean, default: false },
+    authenRole: { type: String, default: "User" },
     blocked: { type: Boolean, default: false },
     confirmed: { type: Boolean, default: false },
   },

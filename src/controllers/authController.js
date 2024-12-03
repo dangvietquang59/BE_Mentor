@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const RefreshToken = require("../models/refreshtoken");
 const gravatar = require("gravatar");
+const Chat = require("../models/ChatGroup");
 
 async function login(req, res) {
   const { email, password } = req.body;
@@ -55,7 +56,7 @@ async function login(req, res) {
 }
 
 async function register(req, res) {
-  const { fullName, email, password, role } = req.body;
+  const { fullName, email, password, role, authenRole } = req.body;
 
   try {
     const existingUser = await User.findOne({ email });
@@ -72,11 +73,16 @@ async function register(req, res) {
       password: hashedPassword,
       role,
       fullName,
+      authenRole,
       imageUrl: `https:${avatarUrl}`,
     });
 
     await newUser.save();
-
+    const chat = new Chat({
+      name: "Admin",
+      members: [newUser?._id, "674942429f96073229866544"],
+    });
+    await chat.save();
     res.json({ message: "Đăng ký thành công.", avatarUrl });
   } catch (error) {
     console.error("Error during registration:", error);

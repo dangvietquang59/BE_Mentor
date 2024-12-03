@@ -60,39 +60,55 @@ exports.withdraw = async (req, res) => {
   }
 };
 
-// Chuyển tiền (Transfer)
 exports.transfer = async (req, res) => {
   const { userId, recipientId, amount } = req.body;
 
   try {
+    // Check if the amount is greater than 0
     if (amount <= 0) throw new Error("Amount must be greater than zero");
 
+    // Find the sender and recipient
     const sender = await User.findById(userId);
     const recipient = await User.findById(recipientId);
 
     if (!sender || !recipient) throw new Error("User not found");
     if (sender.coin < amount) throw new Error("Insufficient balance");
 
-    // Tạo giao dịch chuyển tiền
+    const userAmout = (amount * 90) / 100;
+    const adminAmount = (amount * 10) / 100;
+
+    // Create a new transaction
     const transaction = new Transaction({
       userId,
       relatedUserId: recipientId,
-      type: "transfer",
-      amount,
-      status: "success", // Chờ admin xử lý
+      type: "transfer", // Transaction type
+      amount: userAmout,
+      status: "success", // Assuming success initially, may be updated later
     });
 
+    // Save the transaction to the database
     await transaction.save();
-    // Cập nhật số dư người gửi và người nhận
-    await updateUserBalance(sender._id, -amount);
-    await updateUserBalance(recipient._id, amount);
 
+    // Create an AdminRevenue document to track admin's revenue from the transaction
+    const adminRevenue = new AdminRevenue({
+      transactionId: transaction._id, // Link the revenue to the transaction
+      amount: adminAmount, // Assuming admin takes a commission based on the amount
+    });
+
+    // Save the admin revenue
+    await adminRevenue.save();
+
+    // Update the balances of both the sender and recipient
+    await updateUserBalance(sender._id, -amount); // Deduct from sender
+    await updateUserBalance(recipient._id, amount); // Add to recipient
+
+    // Respond with success message and the transaction details
     res.json({ message: "Transfer request submitted", transaction });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 };
-
 // Admin xử lý giao dịch (Approve/Reject)
 exports.processTransaction = async (req, res) => {
   const { transactionId, action } = req.body;

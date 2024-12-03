@@ -27,18 +27,21 @@ exports.createTag = async (req, res) => {
 // Get all tags with pagination
 exports.getTags = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search = "" } = req.query; // Destructure search from query parameters
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
 
     const skip = (pageNumber - 1) * limitNumber;
 
-    const tags = await Tag.find()
+    // Create a filter object that can include a search condition
+    const filter = search ? { name: { $regex: search, $options: "i" } } : {};
+
+    const tags = await Tag.find(filter) // Apply the filter to the find query
       .skip(skip)
       .limit(limitNumber)
       .sort({ createdAt: -1 }); // Sort by creation date (newest first)
 
-    const totalTags = await Tag.countDocuments();
+    const totalTags = await Tag.countDocuments(filter); // Apply the filter to the count query
     const totalPages = Math.ceil(totalTags / limitNumber);
 
     return res.status(200).json({
