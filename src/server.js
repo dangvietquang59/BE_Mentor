@@ -20,6 +20,7 @@ const reviewRoutes = require("./routes/review");
 const paymentRoutes = require("./routes/payment");
 const transactionsRoutes = require("./routes/transaction.js");
 const tagRoutes = require("./routes/tag.js");
+const adminRoutes = require("./routes/admin.js");
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -86,6 +87,7 @@ app.use("/reviews", reviewRoutes);
 app.use("/payment", paymentRoutes);
 app.use("/transactions", transactionsRoutes);
 app.use("/tags", tagRoutes);
+app.use("/statistics", adminRoutes);
 app.use("/uploads", express.static("uploads"));
 
 cron.schedule("*/1 * * * *", () => {
