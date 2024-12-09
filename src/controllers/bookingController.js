@@ -1,39 +1,48 @@
 const Booking = require("../models/Booking");
 const FreeTimeDetail = require("../models/FreetimeDetail");
 const Notification = require("../models/Notification");
+const Transactions = require("../models/Transactions");
 const User = require("../models/User");
+const AdminRevenue = require("../models/AdminRevenue");
 const mongoose = require("mongoose");
 
 // Create a new booking
 async function createBooking(req, res) {
   try {
-    const { participants, freetimeDetailId } = req.body;
+    const { participants, freetimeDetailId, amount, from, to } = req.body;
     // Kiểm tra FreeTimeDetail
     const freeTimeDetail = await FreeTimeDetail.findById(freetimeDetailId);
     if (!freeTimeDetail) {
       return res.status(404).json({ message: "FreeTimeDetail not found" });
     }
 
-    // Kiểm tra booking đã tồn tại
-    const existingBooking = await Booking.findOne({
-      participants: { $all: participants },
+    // Kiểm tra booking đã tồn tại với thời gian chồng lắp
+    const existingBooking = await Booking.find({
       freetimeDetailId,
+      // Kiểm tra xem có bất kỳ booking nào có thời gian giao nhau
+      $or: [
+        { from: { $lt: to }, to: { $gt: from } }, // Thời gian giao nhau
+      ],
     });
 
-    if (existingBooking) {
+    if (existingBooking.length > 0) {
       return res
         .status(400)
-        .json({ message: "Booking already exists for this detail" });
+        .json({ message: "Booking time overlaps with existing booking" });
     }
 
     // Chuyển đổi participants sang ObjectId
     const participantsObjectIds = participants.map(
       (id) => new mongoose.Types.ObjectId(id)
     );
+
     // Tạo booking mới
     const newBooking = new Booking({
       participants: participantsObjectIds,
       freetimeDetailId,
+      amount,
+      from,
+      to,
     });
     await newBooking.save();
 
@@ -43,7 +52,7 @@ async function createBooking(req, res) {
       const newNotification = new Notification({
         user: participants[0],
         sender: req.user.userId,
-        content: `You have a new booking from ${user?.fullName}`,
+        content: `Bạn có 1 lịch đặt mới từ ${user?.fullName}`,
         entityType: "Booking",
         entityId: newBooking._id,
       });
@@ -120,7 +129,7 @@ async function getBookingsByUserId(req, res) {
 async function updateBooking(req, res) {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, userId } = req.body;
 
     // Cập nhật booking
     const updatedBooking = await Booking.findByIdAndUpdate(
@@ -128,24 +137,47 @@ async function updateBooking(req, res) {
       { status },
       { new: true }
     );
-
+    const booking = await Booking.findById(id);
     // Kiểm tra nếu không tìm thấy booking
-    if (!updatedBooking) {
+    if (!updatedBooking || !booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
     // Tạo thông báo
     let text = "";
+    let isAccepted = false;
     if (status === "Accepted") {
-      text = "Your reservation has been confirmed.";
-    } else if (status === "Refused") {
-      text = "Your reservation has been refused.";
-    } else {
-      text = "Your reservation has been canceled.";
+      text = "Lịch đặt của bạn đã được xác nhận";
+      isAccepted = true;
+    } else if (status === "Canceled") {
+      text = "Lịch đặt của bạn đã bị từ chối";
     }
+    const participants = booking?.participants;
+    const member = participants?.filter(
+      (people) => people?._id.toString() !== userId.toString()
+    );
 
+    if (isAccepted) {
+      const mentorRevenue = booking?.amount * 0.9;
+      const adminFee = booking?.amount * 0.1;
+      const newTransactions = new Transactions({
+        userId: member[0],
+        type: "transfer",
+        amount: mentorRevenue,
+        status: "success",
+        relatedUserId: userId,
+        bookingId: booking?._id,
+      });
+      await newTransactions.save();
+
+      const newRevenue = new AdminRevenue({
+        transactionId: newTransactions?._id,
+        amount: adminFee,
+      });
+      await newRevenue.save();
+    }
     // Thông báo cho người dùng tham gia
-    const userIdToNotify = updatedBooking.participants[0];
+    const userIdToNotify = updatedBooking.participants[1];
     const user = await User.findById(userIdToNotify);
 
     if (user) {

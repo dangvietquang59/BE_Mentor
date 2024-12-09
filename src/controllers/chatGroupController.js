@@ -7,20 +7,30 @@ async function createChatGroup(req, res) {
 
     members.sort();
 
+    // Kiểm tra xem nhóm chat đã tồn tại chưa
     const existingGroup = await ChatGroup.findOne({
       members: { $all: members },
     });
     if (existingGroup) {
-      return res.status(400).json({ error: "Nhóm chat đã tồn tại" });
+      return res
+        .status(400)
+        .json({ error: "Nhóm chat đã tồn tại", existingGroup });
     }
 
-    const newGroup = new ChatGroup({ name, members });
-    await newGroup.save();
+    // Tạo nhóm chat mới
+    const savedGroup = new ChatGroup({ name, members });
+
+    // Lưu nhóm chat mới và populate trường 'members' sau khi lưu
+    const newGroup = await savedGroup.save();
+    await newGroup.populate("members", "-password"); // Populate members và loại bỏ password
+
+    // Trả về dữ liệu nhóm chat đã được populate
     res.status(201).json(newGroup);
   } catch (error) {
     res.status(500).json({ error: "Không thể tạo nhóm" });
   }
 }
+
 // Get all chat groups
 async function getAllChatGroups(req, res) {
   try {
@@ -69,15 +79,24 @@ async function getChatGroupsByUserId(req, res) {
   try {
     const userId = req.params.userId;
 
-    const groups = await ChatGroup.find({ members: userId }).populate(
+    const findGroups = await ChatGroup.find({ members: userId }).populate(
       "members"
     );
 
-    if (groups.length === 0) {
+    if (findGroups.length === 0) {
       return res
         .status(404)
         .json({ error: "Không tìm thấy nhóm chat nào cho người dùng này" });
     }
+    const groups = findGroups.map((group) => {
+      const filteredMembers = group.members.filter(
+        (member) => member._id.toString() !== userId
+      );
+      return {
+        ...group.toObject(),
+        members: filteredMembers,
+      };
+    });
 
     res.status(200).json(groups);
   } catch (error) {

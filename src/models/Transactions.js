@@ -19,6 +19,7 @@ const transactionSchema = new mongoose.Schema(
       default: "pending",
     },
     relatedUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    bookingId: { type: mongoose.Schema.Types.ObjectId, ref: "Booking" },
   },
   { timestamps: true }
 );
