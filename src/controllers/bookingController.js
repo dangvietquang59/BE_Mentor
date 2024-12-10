@@ -5,6 +5,13 @@ const Transactions = require("../models/Transactions");
 const User = require("../models/User");
 const AdminRevenue = require("../models/AdminRevenue");
 const mongoose = require("mongoose");
+async function updateUserBalance(userId, amount) {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+  user.coin += amount;
+  if (user.coin < 0) throw new Error("Insufficient balance");
+  await user.save();
+}
 
 // Create a new booking
 async function createBooking(req, res) {
@@ -109,9 +116,9 @@ async function getBookingsByUserId(req, res) {
 
     // Fetch bookings and sort by 'from' field of 'freetimeDetailId'
     const bookings = await Booking.find({ participants: userIdObj })
-      .populate("participants")
+      .populate("participants", "-password")
       .populate("freetimeDetailId")
-      .sort({ createdAt: -1 }); // 1 for ascending, -1 for descending
+      .sort({ createdAt: -1 });
 
     if (bookings.length === 0) {
       return res
@@ -169,7 +176,8 @@ async function updateBooking(req, res) {
         bookingId: booking?._id,
       });
       await newTransactions.save();
-
+      updateUserBalance(userId, mentorRevenue);
+      updateUserBalance(member[0], booking?.amount * -1);
       const newRevenue = new AdminRevenue({
         transactionId: newTransactions?._id,
         amount: adminFee,

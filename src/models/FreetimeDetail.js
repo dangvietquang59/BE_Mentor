@@ -10,7 +10,11 @@ const freeTimeDetailSchema = new mongoose.Schema(
     name: { type: String, required: true },
     from: { type: Date, required: true },
     to: { type: Date, required: true },
-    status: { type: String, enum: ["Pending", "Accepted"], default: "Pending" },
+    status: {
+      type: String,
+      enum: ["Availabe", "Pending", "Accepted"],
+      default: "Availabe",
+    },
   },
   { timestamps: true }
 );

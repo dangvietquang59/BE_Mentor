@@ -85,10 +85,11 @@ async function getAllUsers(req, res) {
         path: "technologies.technology",
         model: "Technologies",
       })
-      .sort(sort) // Apply sorting
+      .sort(sort)
       .skip(skip)
       .limit(limit)
-      .lean();
+      .lean()
+      .sort({ createdAt: -1 });
 
     const totalUsers = await User.countDocuments(filter);
     const totalPages = Math.ceil(totalUsers / limit);

@@ -30,6 +30,8 @@ async function getFreeTime(req, res) {
       .limit(limit)
       .populate("freeTimeDetail"); // Lấy toàn bộ freeTimeDetail để lọc tiếp theo
 
+    console.log("🚀 ~ getFreeTime ~ freetime:", freetime);
+
     const totalRecords = await FreeTime.countDocuments({
       userId,
       freeDate: { $gte: today },
@@ -41,7 +43,7 @@ async function getFreeTime(req, res) {
       freeDate: convertToVietnamTime(ft.freeDate),
       // Chỉ giữ lại các freeTimeDetail có status là "Pending"
       freeTimeDetail: ft.freeTimeDetail.filter(
-        (detail) => detail.status === "Pending"
+        (detail) => detail.status === "Availabe"
       ),
     }));
 
@@ -95,6 +97,7 @@ async function createFreeTime(req, res) {
     });
 
     await newFreeTime.save(); // Lưu FreeTime trước để lấy ID
+    console.log("freeTimeDetail", freeTimeDetail);
 
     // Xử lý freeTimeDetail để tạo các tài liệu FreeTimeDetail
     const freeTimeDetailDocs = await Promise.all(

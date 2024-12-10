@@ -1,174 +1,144 @@
 const User = require("../models/User");
 const Booking = require("../models/Booking");
 const Transaction = require("../models/Transactions");
+const AdminRevenue = require("../models/AdminRevenue");
 
-// 1. Tổng số lượng người dùng (chia theo loại)
 const getUserCountByRole = async (req, res) => {
   try {
-    const userCount = await User.aggregate([
-      {
-        $group: {
-          _id: "$role", // Nhóm theo role của user
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-    res.status(200).json(userCount);
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
-  }
-};
+    // Await the result of the countDocuments query
+    const userCount = await User.countDocuments();
+    const mentorCount = await User.countDocuments({ role: "Mentor" });
+    const menteeCount = await User.countDocuments({ role: "Mentee" });
+    const totalBookings = await Booking.countDocuments();
+    const totalTransactions = await Transaction.countDocuments();
 
-// 2. Tổng số giao dịch theo trạng thái
-const getTransactionCountByStatus = async (req, res) => {
-  try {
-    const transactionCount = await Transaction.aggregate([
-      {
-        $group: {
-          _id: "$status", // Nhóm theo trạng thái giao dịch
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-    res.status(200).json(transactionCount);
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
-  }
-};
-
-// 3. Tổng số Booking theo trạng thái
-const getBookingCountByStatus = async (req, res) => {
-  try {
-    const bookingCount = await Booking.aggregate([
-      {
-        $group: {
-          _id: "$status", // Nhóm theo trạng thái của booking
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-    res.status(200).json(bookingCount);
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
-  }
-};
-
-// 4. Top Mentor theo số giờ tư vấn
-const getTopMentorsByConsultationHours = async (req, res) => {
-  try {
-    const topMentors = await User.aggregate([
-      { $match: { role: "mentor" } },
-      { $unwind: "$technologies" }, // Tính tổng giờ tư vấn theo từng công nghệ
-      {
-        $group: {
-          _id: "$_id",
-          fullName: { $first: "$fullName" },
-          totalHours: { $sum: "$technologies.experienceYears" },
-        },
-      },
-      { $sort: { totalHours: -1 } }, // Sắp xếp giảm dần theo tổng số giờ tư vấn
-      { $limit: 10 }, // Lấy 10 Mentor hàng đầu
-    ]);
-    res.status(200).json(topMentors);
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
-  }
-};
-
-// 5. Số lượng giao dịch theo loại
-const getTransactionCountByType = async (req, res) => {
-  try {
-    const transactionCount = await Transaction.aggregate([
-      {
-        $group: {
-          _id: "$type", // Nhóm theo loại giao dịch
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-    res.status(200).json(transactionCount);
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
-  }
-};
-
-// 6. Tổng số tiền giao dịch theo loại
-const getTransactionAmountByType = async (req, res) => {
-  try {
-    const transactionAmount = await Transaction.aggregate([
-      {
-        $group: {
-          _id: "$type",
-          totalAmount: { $sum: "$amount" },
-        },
-      },
-    ]);
-    res.status(200).json(transactionAmount);
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
-  }
-};
-
-// 7. Số lượng Mentor bị khóa
-const getBlockedMentorCount = async (req, res) => {
-  try {
-    const blockedMentorCount = await User.countDocuments({
-      role: "mentor",
-      blocked: true,
+    res.status(200).json({
+      userCount,
+      mentorCount,
+      menteeCount,
+      totalBookings,
+      totalTransactions,
     });
-    res.status(200).json({ blockedMentorCount });
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error", error });
   }
 };
 
-// 8. Số lượng Mentor đã xác nhận
-const getConfirmedMentorCount = async (req, res) => {
+const getAdminRevenue = async (req, res) => {
   try {
-    const confirmedMentorCount = await User.countDocuments({
-      role: "mentor",
-      confirmed: true,
-    });
-    res.status(200).json({ confirmedMentorCount });
+    // Await the result of the find query to get the revenue data
+    const revenue = await AdminRevenue.find().populate("transactionId");
+    res.status(200).json(revenue);
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error", error });
+  }
+};
+const getBooking = async (req, res) => {
+  try {
+    // Await the result of the find query to get the revenue data
+    const bookings = await Booking.find()
+      .populate("participants", "-password")
+      .populate("freetimeDetailId");
+    res.status(200).json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error", error });
+  }
+};
+const getTransactions = async (req, res) => {
+  try {
+    // Await the result of the find query to get the revenue data
+    const transactions = await Transaction.find()
+      .populate("userId", "-password")
+      .populate("relatedUserId", "-password")
+      .populate("bookingId");
+    res.status(200).json(transactions);
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error", error });
   }
 };
 
-// 9. Doanh thu hàng tháng của Admin (10% từ các giao dịch 'transfer')
-const getMonthlyAdminRevenue = async (req, res) => {
-  const currentMonth = new Date().getMonth();
+const getRevenueAndTransactions = async (req, res) => {
   try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Missing startDate or endDate" });
+    }
+
+    // Chuyển đổi startDate và endDate sang dạng Date
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Đảm bảo thời gian kết thúc là hết ngày
+
+    // Tính tổng giao dịch theo ngày
     const transactions = await Transaction.aggregate([
       {
         $match: {
-          type: "transfer",
-          createdAt: {
-            $gte: new Date(new Date().getFullYear(), currentMonth, 1),
-          },
+          createdAt: { $gte: start, $lte: end },
         },
       },
-      { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+      { $sort: { _id: 1 } }, // Sắp xếp theo ngày tăng dần
     ]);
 
-    const totalRevenue =
-      transactions.length > 0 ? transactions[0].totalAmount : 0;
-    const adminFee = totalRevenue * 0.1; // 10% từ tổng số tiền giao dịch transfer
+    // Tính tổng doanh thu admin theo ngày
+    const adminRevenues = await AdminRevenue.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
 
-    res.status(200).json({ totalRevenue, adminFee });
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error", error });
+    // Kết hợp dữ liệu giao dịch và doanh thu của admin theo ngày
+    const result = [];
+    const transactionMap = transactions.reduce((acc, item) => {
+      acc[item._id] = item.totalAmount;
+      return acc;
+    }, {});
+
+    const adminRevenueMap = adminRevenues.reduce((acc, item) => {
+      acc[item._id] = item.totalAmount;
+      return acc;
+    }, {});
+
+    // Lấy danh sách các ngày trong khoảng thời gian và tính tổng cho cả transaction và adminRevenue
+    let currentDate = start;
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split("T")[0]; // Lấy phần ngày từ ISO string
+
+      result.push({
+        date: dateStr,
+        transactionTotal: transactionMap[dateStr] || 0,
+        adminRevenueTotal: adminRevenueMap[dateStr] || 0,
+      });
+
+      // Tiến đến ngày tiếp theo
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
-
 module.exports = {
   getUserCountByRole,
-  getTransactionCountByStatus,
-  getBookingCountByStatus,
-  getTopMentorsByConsultationHours,
-  getTransactionCountByType,
-  getTransactionAmountByType,
-  getBlockedMentorCount,
-  getConfirmedMentorCount,
-  getMonthlyAdminRevenue,
+  getAdminRevenue,
+  getBooking,
+  getTransactions,
+  getRevenueAndTransactions,
 };
