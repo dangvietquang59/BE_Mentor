@@ -7,7 +7,7 @@ router.get("/", jobController.getJobs);
 
 router.post("/", authMiddleware.authenticateToken, jobController.createJob);
 
-router.get("/:id", jobController.getJobById);
+router.get("/title", jobController.getJobByName);
 
 router.put("/:id", authMiddleware.authenticateToken, jobController.updateJob);
 

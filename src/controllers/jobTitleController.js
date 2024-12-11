@@ -46,14 +46,20 @@ const createJob = async (req, res) => {
 };
 
 // Lấy công việc theo ID
-const getJobById = async (req, res) => {
+const getJobByName = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    const { name } = req.query;
+
+    // Sử dụng findOne để tìm kiếm theo name
+    const job = await Job.findOne({ name });
+
     if (job == null) {
       return res.status(404).json({ message: "Cannot find job" });
     }
-    res.status(200).json(job);
+
+    res.status(200).json(job._id); // Trả về _id của job
   } catch (err) {
+    console.error(err); // Log lỗi để debug dễ dàng hơn
     res.status(500).json({ message: err.message });
   }
 };
@@ -95,7 +101,7 @@ const deleteJob = async (req, res) => {
 module.exports = {
   deleteJob,
   updateJob,
-  getJobById,
+  getJobByName,
   createJob,
   getJobs,
 };

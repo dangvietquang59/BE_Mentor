@@ -106,6 +106,7 @@ async function getBookingById(req, res) {
 async function getBookingsByUserId(req, res) {
   try {
     const { userId } = req.params;
+    const { date, status } = req.query; // Get the date and status from query parameters
 
     // Validate userId format
     if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -114,8 +115,26 @@ async function getBookingsByUserId(req, res) {
 
     const userIdObj = new mongoose.Types.ObjectId(userId);
 
-    // Fetch bookings and sort by 'from' field of 'freetimeDetailId'
-    const bookings = await Booking.find({ participants: userIdObj })
+    // Prepare the filter for bookings
+    const filter = { participants: userIdObj };
+
+    // If a date is provided, filter bookings by that day
+    if (date) {
+      const startOfDay = new Date(date);
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setHours(23, 59, 59, 999); // Set end of day to 11:59:59.999
+
+      // Update filter to include bookings within that date
+      filter.createdAt = { $gte: startOfDay, $lte: endOfDay };
+    }
+
+    // If a status is provided, filter bookings by the given status
+    if (status) {
+      filter.status = status;
+    }
+
+    // Fetch bookings based on the filter and sort by 'createdAt' field
+    const bookings = await Booking.find(filter)
       .populate("participants", "-password")
       .populate("freetimeDetailId")
       .sort({ createdAt: -1 });

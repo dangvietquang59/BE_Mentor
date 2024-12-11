@@ -67,7 +67,7 @@ async function createFreeTime(req, res) {
     const { freeDate, freeTimeDetail } = req.body;
     const userId = req.user.userId;
 
-    // Xác thực dữ liệu đầu vào
+    // Validate input data
     if (
       !userId ||
       !freeDate ||
@@ -77,10 +77,14 @@ async function createFreeTime(req, res) {
       return res.status(400).json({ message: "Dữ liệu đầu vào không hợp lệ" });
     }
 
-    // Kiểm tra xem đã có một mục FreeTime cho ngày đã cho chưa
+    // Normalize the freeDate to 00:00:00.000 UTC
+    // const normalizedFreeDate = new Date(freeDate);
+    // normalizedFreeDate.setHours(0, 0, 0, 0); // Set time to midnight UTC for comparison
+
+    // Check if there is already a FreeTime entry for this user and date
     const existingFreeTime = await FreeTime.findOne({
       userId,
-      freeDate: new Date(freeDate).setHours(0, 0, 0, 0), // Chuẩn hóa ngày
+      freeDate,
     });
 
     if (existingFreeTime) {
@@ -89,45 +93,45 @@ async function createFreeTime(req, res) {
         .json({ message: "FreeTime cho ngày này đã tồn tại" });
     }
 
-    // Tạo một mục FreeTime mới trước
+    // Create a new FreeTime document
     const newFreeTime = new FreeTime({
       userId,
-      freeDate,
-      freeTimeDetail: [], // Khởi tạo như một mảng trống, sẽ thêm sau
+      freeDate: freeDate, // Store original freeDate
+      freeTimeDetail: [], // Start with an empty array for the details
     });
 
-    await newFreeTime.save(); // Lưu FreeTime trước để lấy ID
-    console.log("freeTimeDetail", freeTimeDetail);
+    await newFreeTime.save(); // Save FreeTime first to get its ID
 
-    // Xử lý freeTimeDetail để tạo các tài liệu FreeTimeDetail
+    // Process the freeTimeDetail to create FreeTimeDetail documents
     const freeTimeDetailDocs = await Promise.all(
       freeTimeDetail.map(async (detail) => {
         const { name, from, to } = detail;
         const fromDateTime = new Date(freeDate);
         const toDateTime = new Date(freeDate);
 
-        // Thiết lập giờ và phút cho thời gian từ và đến
+        // Set hours and minutes for 'from' and 'to'
         const [fromHours, fromMinutes] = from.split(":").map(Number);
         const [toHours, toMinutes] = to.split(":").map(Number);
         fromDateTime.setHours(fromHours, fromMinutes, 0, 0);
         toDateTime.setHours(toHours, toMinutes, 0, 0);
 
-        // Tạo tài liệu FreeTimeDetail với freeTimeId được thiết lập
+        // Create a new FreeTimeDetail document
         const freeTimeDetailDoc = new FreeTimeDetail({
           name,
-          freeTimeId: newFreeTime._id, // Thiết lập freeTimeId bây giờ
+          freeTimeId: newFreeTime._id, // Link to the FreeTime ID
           from: fromDateTime,
           to: toDateTime,
         });
 
-        return await freeTimeDetailDoc.save(); // Lưu tài liệu FreeTimeDetail
+        return await freeTimeDetailDoc.save(); // Save the FreeTimeDetail document
       })
     );
 
-    // Cập nhật tài liệu FreeTime để bao gồm các ID của các tài liệu FreeTimeDetail đã tạo
+    // Update the FreeTime document to include the FreeTimeDetail references
     newFreeTime.freeTimeDetail = freeTimeDetailDocs.map((doc) => doc._id);
     await newFreeTime.save();
 
+    // Return a success response with the new FreeTime object
     return res
       .status(201)
       .json({ message: "FreeTime đã được tạo thành công", data: newFreeTime });
