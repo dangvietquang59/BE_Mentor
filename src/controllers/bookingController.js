@@ -17,25 +17,28 @@ async function updateUserBalance(userId, amount) {
 async function createBooking(req, res) {
   try {
     const { participants, freetimeDetailId, amount, from, to } = req.body;
+
     // Kiểm tra FreeTimeDetail
     const freeTimeDetail = await FreeTimeDetail.findById(freetimeDetailId);
     if (!freeTimeDetail) {
       return res.status(404).json({ message: "FreeTimeDetail not found" });
     }
 
-    // Kiểm tra booking đã tồn tại với thời gian chồng lắp
-    const existingBooking = await Booking.find({
-      freetimeDetailId,
-      // Kiểm tra xem có bất kỳ booking nào có thời gian giao nhau
+    // Kiểm tra booking đã tồn tại với thời gian chồng lắp cho tất cả participants
+    const participantBookings = await Booking.find({
+      participants: {
+        $in: participants.map((id) => new mongoose.Types.ObjectId(id)),
+      },
       $or: [
         { from: { $lt: to }, to: { $gt: from } }, // Thời gian giao nhau
       ],
     });
 
-    if (existingBooking.length > 0) {
-      return res
-        .status(400)
-        .json({ message: "Booking time overlaps with existing booking" });
+    if (participantBookings.length > 0) {
+      return res.status(400).json({
+        message:
+          "One or more participants already have a booking during the specified time",
+      });
     }
 
     // Chuyển đổi participants sang ObjectId

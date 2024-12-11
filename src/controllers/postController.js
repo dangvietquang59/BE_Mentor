@@ -26,7 +26,8 @@ async function getAllPost(req, res) {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber)
-      .populate("userId");
+      .populate("userId")
+      .populate("tags");
 
     const totalPosts = await Post.countDocuments(query);
     const totalPages = Math.ceil(totalPosts / limitNumber);
@@ -47,7 +48,7 @@ async function getAllPost(req, res) {
 
 async function createNewPost(req, res) {
   try {
-    const { title, content } = req.body;
+    const { title, content, tags } = req.body;
     const userId = req.user.userId;
     const slug = slugify(title, { lower: true });
     const createdAt = getCurrentTime();
@@ -56,6 +57,7 @@ async function createNewPost(req, res) {
       title,
       content,
       userId,
+      tags,
       slug: `${slug}-${userId}`,
       createdAt,
     });
