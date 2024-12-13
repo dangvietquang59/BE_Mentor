@@ -21,6 +21,7 @@ const paymentRoutes = require("./routes/payment");
 const transactionsRoutes = require("./routes/transaction.js");
 const tagRoutes = require("./routes/tag.js");
 const adminRoutes = require("./routes/admin.js");
+const repeatFreeTimeDetails = require("./services/repaetTime.js");
 
 const cron = require("node-cron");
 const cors = require("cors");
@@ -90,10 +91,9 @@ app.use("/tags", tagRoutes);
 app.use("/statistics", adminRoutes);
 app.use("/uploads", express.static("uploads"));
 
-cron.schedule("*/1 * * * *", () => {
-  // console.log("Running a task every 1 minute");
+cron.schedule("0 0 * * *", () => {
+  repeatFreeTimeDetails();
 });
-
 //for chat realtime
 require("./utils/Socket.js")(io);
 

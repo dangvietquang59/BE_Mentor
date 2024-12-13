@@ -1,5 +1,6 @@
 const FreeTime = require("../models/Freetime");
 const FreeTimeDetail = require("../models/FreetimeDetail");
+const Booking = require("../models/Booking");
 const moment = require("moment");
 // Hàm hỗ trợ chuyển đổi múi giờ sang giờ Việt Nam
 function convertToVietnamTime(date) {
@@ -10,6 +11,54 @@ function convertToVietnamTime(date) {
 }
 
 // Lấy danh sách FreeTime
+// async function getFreeTime(req, res) {
+//   try {
+//     const { userId } = req.params;
+//     const { page = 1 } = req.query;
+//     const limit = 12;
+//     const skip = (page - 1) * limit;
+
+//     // Lấy ngày hôm nay và đặt thời gian về đầu ngày (00:00) để so sánh
+//     const today = moment().startOf("day").toDate();
+
+//     // Tìm kiếm FreeTime cho userId, từ hôm nay trở đi
+//     const freetime = await FreeTime.find({
+//       userId,
+//       freeDate: { $gte: today }, // Lọc các bản ghi có freeDate lớn hơn hoặc bằng hôm nay
+//     })
+//       .sort({ freeDate: 1 }) // Sắp xếp theo freeDate tăng dần
+//       .skip(skip)
+//       .limit(limit)
+//       .populate("freeTimeDetail"); // Lấy toàn bộ freeTimeDetail để lọc tiếp theo
+
+//     const totalRecords = await FreeTime.countDocuments({
+//       userId,
+//       freeDate: { $gte: today },
+//     });
+
+//     // Chuyển đổi tất cả thời gian sang múi giờ Việt Nam và lọc freeTimeDetail có trạng thái Pending
+//     const freetimeVietnam = freetime.map((ft) => ({
+//       ...ft._doc,
+//       freeDate: convertToVietnamTime(ft.freeDate),
+//       // Chỉ giữ lại các freeTimeDetail có status là "Pending"
+//       freeTimeDetail: ft.freeTimeDetail.filter(
+//         (detail) => detail.status === "Availabe"
+//       ),
+//     }));
+
+//     return res.status(200).json({
+//       page: parseInt(page, 10),
+//       totalPages: Math.ceil(totalRecords / limit),
+//       totalRecords,
+//       freetime: freetimeVietnam,
+//     });
+//   } catch (error) {
+//     console.log("Error when fetching freetime", error);
+//     return res
+//       .status(500)
+//       .json({ error: "An error occurred while fetching free time" });
+//   }
+// }
 async function getFreeTime(req, res) {
   try {
     const { userId } = req.params;
@@ -17,34 +66,78 @@ async function getFreeTime(req, res) {
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    // Lấy ngày hôm nay và đặt thời gian về đầu ngày (00:00) để so sánh
     const today = moment().startOf("day").toDate();
 
-    // Tìm kiếm FreeTime cho userId, từ hôm nay trở đi
+    // Lấy FreeTime cho userId từ hôm nay trở đi
     const freetime = await FreeTime.find({
       userId,
-      freeDate: { $gte: today }, // Lọc các bản ghi có freeDate lớn hơn hoặc bằng hôm nay
+      freeDate: { $gte: today },
     })
-      .sort({ freeDate: 1 }) // Sắp xếp theo freeDate tăng dần
+      .sort({ freeDate: 1 })
       .skip(skip)
       .limit(limit)
-      .populate("freeTimeDetail"); // Lấy toàn bộ freeTimeDetail để lọc tiếp theo
-
-    console.log("🚀 ~ getFreeTime ~ freetime:", freetime);
+      .populate("freeTimeDetail");
 
     const totalRecords = await FreeTime.countDocuments({
       userId,
       freeDate: { $gte: today },
     });
 
-    // Chuyển đổi tất cả thời gian sang múi giờ Việt Nam và lọc freeTimeDetail có trạng thái Pending
+    // Lấy tất cả các khoảng thời gian đã được booking
+    const bookings = await Booking.find({
+      freetimeDetailId: {
+        $in: freetime.flatMap((ft) => ft.freeTimeDetail.map((d) => d._id)),
+      },
+    });
+
+    // Hàm tính toán khoảng thời gian còn lại sau khi đã trừ khoảng booked
+    function calculateAvailableTimes(availableFrom, availableTo, bookedTimes) {
+      const result = [];
+      let start = moment(availableFrom);
+
+      for (const booked of bookedTimes) {
+        const bookedFrom = moment(booked.from);
+        const bookedTo = moment(booked.to);
+
+        if (bookedFrom > start) {
+          result.push({
+            from: start.format("HH:mm"),
+            to: bookedFrom.format("HH:mm"),
+          });
+        }
+        start = moment.max(start, bookedTo);
+      }
+
+      if (start < moment(availableTo)) {
+        result.push({
+          from: start.format("HH:mm"),
+          to: moment(availableTo).format("HH:mm"),
+        });
+      }
+
+      return result;
+    }
+
+    // Tính toán thời gian khả dụng cho từng freeTimeDetail
     const freetimeVietnam = freetime.map((ft) => ({
       ...ft._doc,
       freeDate: convertToVietnamTime(ft.freeDate),
-      // Chỉ giữ lại các freeTimeDetail có status là "Pending"
-      freeTimeDetail: ft.freeTimeDetail.filter(
-        (detail) => detail.status === "Availabe"
-      ),
+      freeTimeDetail: ft.freeTimeDetail.map((detail) => {
+        const detailBookings = bookings
+          .filter((b) => b.freetimeDetailId.equals(detail._id))
+          .map((b) => ({ from: b.from, to: b.to }));
+
+        const availableTimes = calculateAvailableTimes(
+          detail.from,
+          detail.to,
+          detailBookings
+        );
+
+        return {
+          ...detail._doc,
+          availableTimes, // Thời gian còn lại sau khi trừ booked
+        };
+      }),
     }));
 
     return res.status(200).json({
@@ -64,7 +157,7 @@ async function getFreeTime(req, res) {
 // Tạo mới FreeTime
 async function createFreeTime(req, res) {
   try {
-    const { freeDate, freeTimeDetail } = req.body;
+    const { freeDate, freeTimeDetail, repeatDays } = req.body;
     const userId = req.user.userId;
 
     // Validate input data
@@ -76,10 +169,6 @@ async function createFreeTime(req, res) {
     ) {
       return res.status(400).json({ message: "Dữ liệu đầu vào không hợp lệ" });
     }
-
-    // Normalize the freeDate to 00:00:00.000 UTC
-    // const normalizedFreeDate = new Date(freeDate);
-    // normalizedFreeDate.setHours(0, 0, 0, 0); // Set time to midnight UTC for comparison
 
     // Check if there is already a FreeTime entry for this user and date
     const existingFreeTime = await FreeTime.findOne({
@@ -96,8 +185,8 @@ async function createFreeTime(req, res) {
     // Create a new FreeTime document
     const newFreeTime = new FreeTime({
       userId,
-      freeDate: freeDate, // Store original freeDate
-      freeTimeDetail: [], // Start with an empty array for the details
+      freeDate,
+      freeTimeDetail: [],
     });
 
     await newFreeTime.save(); // Save FreeTime first to get its ID
@@ -121,6 +210,7 @@ async function createFreeTime(req, res) {
           freeTimeId: newFreeTime._id, // Link to the FreeTime ID
           from: fromDateTime,
           to: toDateTime,
+          repeatDays: Array.isArray(repeatDays) ? repeatDays : [], // Include repeatDays
         });
 
         return await freeTimeDetailDoc.save(); // Save the FreeTimeDetail document
