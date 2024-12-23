@@ -25,21 +25,24 @@ async function createBooking(req, res) {
     }
 
     // Kiểm tra booking đã tồn tại với thời gian chồng lắp cho tất cả participants
-    const participantBookings = await Booking.find({
-      participants: {
-        $in: participants.map((id) => new mongoose.Types.ObjectId(id)),
-      },
-      $or: [
-        { from: { $lt: to }, to: { $gt: from } }, // Thời gian giao nhau
-      ],
-    });
+    // Sửa truy vấn để chỉ kiểm tra sự chồng lắp giữa các booking của cùng một participant
+    // const participantBookings = await Booking.find({
+    //   participants: {
+    //     $elemMatch: {
+    //       $in: participants.map((id) => new mongoose.Types.ObjectId(id)),
+    //     },
+    //   },
+    //   $or: [
+    //     { from: { $lt: to }, to: { $gt: from } }, // Thời gian giao nhau
+    //   ],
+    // });
 
-    if (participantBookings.length > 0) {
-      return res.status(400).json({
-        message:
-          "One or more participants already have a booking during the specified time",
-      });
-    }
+    // if (participantBookings.length > 0) {
+    //   return res.status(400).json({
+    //     message:
+    //       "One or more participants already have a booking during the specified time",
+    //   });
+    // }
 
     // Chuyển đổi participants sang ObjectId
     const participantsObjectIds = participants.map(

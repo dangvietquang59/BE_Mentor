@@ -11,16 +11,36 @@ function getCurrentTime() {
 
 async function getAllPost(req, res) {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { page = 1, limit = 10, search = "", tagIds = [] } = req.query;
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
 
+    // Kiểm tra các tham số page và limit có hợp lệ không
+    if (isNaN(pageNumber) || isNaN(limitNumber)) {
+      return res.status(400).json({ error: "Invalid page or limit value" });
+    }
+
     const skip = (pageNumber - 1) * limitNumber;
 
-    // Build the query object for filtering
-    const query = search
-      ? { title: { $regex: search, $options: "i" } } // Search case-insensitively in title
-      : {};
+    // Xử lý tagIds nếu nó không phải là mảng
+    let tagIdsArray = [];
+    if (tagIds) {
+      // Nếu tagIds là một chuỗi, chuyển nó thành mảng
+      tagIdsArray = Array.isArray(tagIds) ? tagIds : tagIds.split(",");
+    }
+
+    // Tạo đối tượng query để lọc dữ liệu
+    const query = {};
+
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    if (tagIdsArray.length > 0) {
+      query.tags = {
+        $in: tagIdsArray.map((tagId) => mongoose.Types.ObjectId(tagId)),
+      };
+    }
 
     const allPosts = await Post.find(query)
       .sort({ createdAt: -1 })
@@ -91,14 +111,14 @@ async function getPostByUser(req, res) {
 
 async function updatePost(req, res) {
   const { postId } = req.params;
-  const { title, content } = req.body;
+  const { title, content, tags } = req.body;
   const slug = slugify(title, { lower: true });
   const updatedAt = getCurrentTime();
 
   try {
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
-      { title, content, slug, updatedAt },
+      { title, content, slug, tags, updatedAt },
       { new: true }
     );
 
